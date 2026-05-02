@@ -3,10 +3,12 @@
     <mat-card-title>
       <div class="header-container">
         <h2>Buscar Passagens</h2>
-        <mat-button-toggle-group formControlName="tripType" exclusive>
-          <mat-button-toggle value="one-way">Só Ida</mat-button-toggle>
-          <mat-button-toggle value="round-trip">Ida e Volta</mat-button-toggle>
-        </mat-button-toggle-group>
+        <form [formGroup]="searchForm" style="display:inline; margin:0; padding:0; border:0; background:none;">
+          <mat-button-toggle-group formControlName="tripType" exclusive>
+            <mat-button-toggle value="one-way">Só Ida</mat-button-toggle>
+            <mat-button-toggle value="round-trip">Ida e Volta</mat-button-toggle>
+          </mat-button-toggle-group>
+        </form>
       </div>
     </mat-card-title>
   </mat-card-header>
@@ -16,11 +18,32 @@
         <div *ngFor="let segment of segments.controls; let i = index" [formGroupName]="i" class="segment-row">
           <mat-form-field appearance="outline">
             <mat-label>Origem</mat-label>
-            <input matInput formControlName="origin" required>
+            <input matInput formControlName="origin" required [matAutocomplete]="originAuto" (blur)="normalizeAirportCode(i, 'origin')">
+            <mat-hint *ngIf="getAirportHint(i, 'origin') as originHint">{{ originHint }}</mat-hint>
+            <mat-error *ngIf="segment.get('origin')?.hasError('airportInvalid')">Selecione um aeroporto da lista.</mat-error>
+            <mat-autocomplete #originAuto="matAutocomplete">
+              <mat-option *ngFor="let airport of getFilteredAirports(i, 'origin')" [value]="airport.code">
+                <div class="airport-option">
+                  <span class="airport-code">{{ airport.code }}</span>
+                  <span class="airport-meta">{{ airport.city }} - {{ airport.name }}/{{ airport.state }}</span>
+                </div>
+              </mat-option>
+            </mat-autocomplete>
           </mat-form-field>
           <mat-form-field appearance="outline">
             <mat-label>Destino</mat-label>
-            <input matInput formControlName="destination" required>
+            <input matInput formControlName="destination" required [matAutocomplete]="destinationAuto" (blur)="normalizeAirportCode(i, 'destination')">
+            <mat-hint *ngIf="getAirportHint(i, 'destination') as destinationHint">{{ destinationHint }}</mat-hint>
+            <mat-error *ngIf="segment.get('destination')?.hasError('airportInvalid')">Selecione um aeroporto da lista.</mat-error>
+            <mat-error *ngIf="segment.hasError('sameAirport')">Origem e destino não podem ser iguais.</mat-error>
+            <mat-autocomplete #destinationAuto="matAutocomplete">
+              <mat-option *ngFor="let airport of getFilteredAirports(i, 'destination')" [value]="airport.code">
+                <div class="airport-option">
+                  <span class="airport-code">{{ airport.code }}</span>
+                  <span class="airport-meta">{{ airport.city }} - {{ airport.name }}/{{ airport.state }}</span>
+                </div>
+              </mat-option>
+            </mat-autocomplete>
           </mat-form-field>
           <mat-form-field appearance="outline">
             <mat-label>Data</mat-label>
@@ -36,15 +59,18 @@
       <button mat-button color="primary" type="button" (click)="addSegment()">
         <mat-icon>add</mat-icon> Adicionar Trecho
       </button>
+      <p class="airport-helper-text">Digite cidade, estado ou código IATA e escolha um aeroporto sugerido.</p>
       <div *ngIf="tripType === 'round-trip'">
         <mat-form-field appearance="outline">
           <mat-label>Data de Volta</mat-label>
           <input matInput [matDatepicker]="returnPicker" formControlName="returnDate">
           <mat-datepicker-toggle matSuffix [for]="returnPicker"></mat-datepicker-toggle>
           <mat-datepicker #returnPicker></mat-datepicker>
+          <mat-error *ngIf="returnDateControl.hasError('required')">Informe a data de volta.</mat-error>
+          <mat-error *ngIf="returnDateControl.hasError('returnBeforeDeparture')">A data de volta não pode ser anterior à ida.</mat-error>
         </mat-form-field>
       </div>
-      <button mat-raised-button color="primary" class="gradient-button" type="submit" [disabled]="!searchForm.valid">
+      <button mat-raised-button color="primary" class="gradient-button submit-button" type="submit" [disabled]="!searchForm.valid">
         Buscar
       </button>
     </form>

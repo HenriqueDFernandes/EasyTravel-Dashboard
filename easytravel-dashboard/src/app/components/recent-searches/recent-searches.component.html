@@ -1,14 +1,21 @@
-<mat-list *ngIf="searches.length > 0">
-  <mat-list-item *ngFor="let search of searches">
-    <span>{{ search.origin }} → {{ search.destination }} ({{ search.date }})</span>
-    <button mat-icon-button color="primary" (click)="selectSearch.emit(search)">
-      <mat-icon>search</mat-icon>
-    </button>
-    <button mat-icon-button color="warn" (click)="removeSearch.emit(search.id)">
-      <mat-icon>delete</mat-icon>
-    </button>
-  </mat-list-item>
-</mat-list>
-<div *ngIf="searches.length === 0">
-  <p>Nenhuma busca recente.</p>
+<div class="recent-searches-shell" *ngIf="searches.length > 0; else emptyState">
+  <span class="recent-searches-label">Recentes</span>
+
+  <mat-form-field appearance="outline" class="recent-searches-field">
+    <mat-label>Busca salva</mat-label>
+    <mat-select [value]="selectedSearchId" (selectionChange)="onSelectSearch($event.value)">
+      <mat-option [value]="null">Nenhuma</mat-option>
+      <mat-option *ngFor="let search of searches" [value]="search.id">
+        {{ formatSearch(search) }}
+      </mat-option>
+    </mat-select>
+  </mat-form-field>
+
+  <button mat-icon-button color="warn" type="button" [disabled]="!selectedSearchId" (click)="removeSelectedSearch()" aria-label="Remover busca selecionada">
+    <mat-icon>delete</mat-icon>
+  </button>
 </div>
+
+<ng-template #emptyState>
+  <p class="empty-state">Nenhuma busca recente.</p>
+</ng-template>

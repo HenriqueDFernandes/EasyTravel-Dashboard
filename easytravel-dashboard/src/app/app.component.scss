@@ -9,10 +9,17 @@
 
 .filters-recent-container {
   display: flex;
-  flex-wrap: wrap;
-  gap: 2rem;
-  margin: 2rem 0;
-  align-items: flex-start;
+  flex-direction: column;
+  gap: 1.5rem;
+  margin: 2rem auto;
+  max-width: 700px;
+  width: min(100% - 2rem, 700px);
+  align-items: stretch;
+  box-sizing: border-box;
+}
+
+.filters-recent-container > * {
+  width: 100%;
 }
 
 .loading-container {

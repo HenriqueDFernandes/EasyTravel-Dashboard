@@ -1,11 +1,32 @@
+.filter-card {
+  width: 100%;
+  box-sizing: border-box;
+}
+
 .filter-form {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 1.5rem;
-  align-items: center;
-  margin-bottom: 2rem;
+  display: grid;
+  grid-template-columns: 0.9fr 1fr 1fr 1.35fr auto;
+  gap: 0.75rem;
+  align-items: start;
+  margin-top: 1rem;
 }
 
 mat-form-field {
-  min-width: 180px;
+  min-width: 0;
+}
+
+mat-checkbox {
+  align-self: center;
+  white-space: nowrap;
+}
+
+@media (max-width: 768px) {
+  .filter-form {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  mat-checkbox {
+    white-space: normal;
+  }
 }

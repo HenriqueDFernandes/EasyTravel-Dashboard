@@ -1,18 +1,8 @@
-<div class="results-header">
-  <mat-form-field appearance="fill">
-    <mat-label>Ordenar por</mat-label>
-    <mat-select [value]="sortBy" (selectionChange)="onSortChange($event.value)">
-      <mat-option value="price">Preço</mat-option>
-      <mat-option value="duration">Duração</mat-option>
-    </mat-select>
-  </mat-form-field>
-</div>
-
-<div *ngIf="sortedFlights.length === 0">
+<div *ngIf="flights.length === 0">
   <p>Nenhum voo encontrado.</p>
 </div>
 
-<div *ngFor="let flight of sortedFlights" class="flight-card">
+<div *ngFor="let flight of flights" class="flight-card">
   <mat-card>
     <mat-card-title>{{ flight.origin }} → {{ flight.destination }}</mat-card-title>
     <mat-card-content>

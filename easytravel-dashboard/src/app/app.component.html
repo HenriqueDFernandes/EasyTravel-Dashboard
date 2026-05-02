@@ -10,7 +10,7 @@
 
 <!-- Filtros e buscas recentes -->
 <div class="filters-recent-container">
-  <app-filter-panel [filters]="filters" [availableAirlines]="availableAirlines" (filtersChange)="onFiltersChange($event)"></app-filter-panel>
+  <app-filter-panel [filters]="filters" [sortBy]="sortBy" [availableAirlines]="availableAirlines" (filtersChange)="onFiltersChange($event)" (sortByChange)="onSortChange($event)"></app-filter-panel>
   <app-recent-searches [searches]="recentSearches" (selectSearch)="onSelectRecentSearch($event)" (removeSearch)="onRemoveRecentSearch($event)"></app-recent-searches>
 </div>
 
@@ -18,4 +18,4 @@
 <div *ngIf="isLoading" class="loading-container">
   <mat-progress-spinner mode="indeterminate"></mat-progress-spinner>
 </div>
-<app-flight-results *ngIf="!isLoading" [flights]="filteredFlights" [sortBy]="sortBy" (sortByChange)="onSortChange($event)"></app-flight-results>
+<app-flight-results *ngIf="!isLoading" [flights]="filteredFlights"></app-flight-results>

@@ -6,6 +6,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatButtonModule } from '@angular/material/button';
+import { MatCardModule } from '@angular/material/card';
 import { FlightFilters } from '../../models/filter.model';
 
 @Component({
@@ -18,7 +19,8 @@ import { FlightFilters } from '../../models/filter.model';
     MatInputModule,
     MatSelectModule,
     MatCheckboxModule,
-    MatButtonModule
+    MatButtonModule,
+    MatCardModule
   ],
   templateUrl: './filter-panel.component.html',
   styleUrls: ['./filter-panel.component.scss']
@@ -30,6 +32,8 @@ export class FilterPanelComponent {
     airlines: [],
     directFlightsOnly: false
   };
+  @Input() sortBy = 'price';
   @Input() availableAirlines: string[] = [];
   @Output() filtersChange = new EventEmitter<FlightFilters>();
+  @Output() sortByChange = new EventEmitter<string>();
 }
