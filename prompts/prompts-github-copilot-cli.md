@@ -53,3 +53,11 @@ Resposta: surira uma mensagem de commit e envie depois da minha aprovação
 Me forneça uma interface para eu ter de exemplo e depois disso me forneça um prompt completo para eu solicitar ao meu agente no vscode que crie esses componentes.
 Se esse prompt ficar muito complexo podemos usar chain-of-thought para dividir em partes e facilitar a implantação
 
+# Prompt 9
+
+Contexto: Aplicação MVP para busca de passagens aereas, com front em angular buscando em api externa;
+Objetivo: Atualize o o arquivo docs/mermaid-frontend.md para refletir as mudanças recentes na arquitetura do frontend e na separação do serviço.
+Estilo: Seguir o que já esta sendo feito no mermaid-frontend.md
+Tom: técnico;
+Audiência: o diagrama será lido por engenheiros de software que vão avaliar a estrutura, portanod deve ser detalhado de forma didatica para entendimento do repositório;
+Resposta: diagrama atualizado para refletir o atual estado do repositório
