@@ -1,0 +1,42 @@
+# Node modules
+node_modules/
+
+# Build output
+/dist/
+/tmp/
+
+# Angular environment files
+/src/environments/environment*.ts
+
+# IDEs and editors
+/.idea/
+/.vscode/
+*.sublime-workspace
+*.sublime-project
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Test and coverage
+/coverage/
+/karma-*.log
+/coverage-final.json
+
+# Compiled output
+*.js
+*.js.map
+*.tsbuildinfo
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Local env files
+.env
+.env.*
+
+# Misc
+.sass-cache/
+connect.lock
