@@ -1,0 +1,21 @@
+<!-- Header -->
+<mat-toolbar color="primary" class="app-toolbar">
+  <span>EasyTravel - Dashboard de Passagens Aéreas</span>
+  <span class="spacer"></span>
+  <mat-icon>flight_takeoff</mat-icon>
+</mat-toolbar>
+
+<!-- Formulário de busca -->
+<app-search-form (search)="onSearch($event)"></app-search-form>
+
+<!-- Filtros e buscas recentes -->
+<div class="filters-recent-container">
+  <app-filter-panel [filters]="filters" [availableAirlines]="availableAirlines" (filtersChange)="onFiltersChange($event)"></app-filter-panel>
+  <app-recent-searches [searches]="recentSearches" (selectSearch)="onSelectRecentSearch($event)" (removeSearch)="onRemoveRecentSearch($event)"></app-recent-searches>
+</div>
+
+<!-- Resultados -->
+<div *ngIf="isLoading" class="loading-container">
+  <mat-progress-spinner mode="indeterminate"></mat-progress-spinner>
+</div>
+<app-flight-results *ngIf="!isLoading" [flights]="filteredFlights" [sortBy]="sortBy" (sortByChange)="onSortChange($event)"></app-flight-results>

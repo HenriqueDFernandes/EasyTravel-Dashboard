@@ -1,6 +1,6 @@
 ```mermaid
 flowchart TD
-    A[Usuário] -->|Interage| B[Interface Angular]
+    A[Usuario] -->|Interage| B[Interface Angular]
     B -->|Solicita busca| C[Serviço de Busca de Voos]
     C -->|Chama| D[API Gratuita de Voos]
     D -->|Retorna dados| C

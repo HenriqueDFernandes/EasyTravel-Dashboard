@@ -37,6 +37,9 @@ yarn-error.log*
 .env
 .env.*
 
+# Angular cache
+**/.angular/
+
 # Misc
 .sass-cache/
 connect.lock

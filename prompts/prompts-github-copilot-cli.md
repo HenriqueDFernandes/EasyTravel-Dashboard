@@ -32,3 +32,24 @@ Contexto: Frontend enxuto com chamadas para APIs gratuitas de busca de preço de
 Objetivo: gerar diagrama mermaid de componentes e fluxo de dados;
 Estilo: simples, legível e versonavel;
 Resposta: apenas bloco mermaid. Salve o arquivo em docs/ como mermaid-<contexto>.md, usando um nome descritivo para o contexto do diagrama.
+
+# Prompt 6
+
+Contexto: Foi criada a pasta docs/ com centralização da documentação sobre escopo, backlog e mermaid diagram.
+Objetivo: Faça o commit dessas modificações
+Estilo: Use conventional commits
+Resposta: surira uma mensagem de commit e envie depois da minha aprovação
+
+# Prompt 7 (FigmaMake)
+
+- Contexto: MVP para dashboard de passagens aereas e roteiros de viagens;
+[docs/escopo.md]
+- Objetivo: Crie a interface para o primeiro release do backlog que é:
+[docs/backlog.md/Release 1: Desenvolvimento (Core)]
+- Estilo: Estou desenvolvendo com angular e angular materials, quero uma interface com tons leves de verde e laranja,, sem dark mode por enquanto;
+
+# Prompt 8 (FigmaMake)
+
+Me forneça uma interface para eu ter de exemplo e depois disso me forneça um prompt completo para eu solicitar ao meu agente no vscode que crie esses componentes.
+Se esse prompt ficar muito complexo podemos usar chain-of-thought para dividir em partes e facilitar a implantação
+

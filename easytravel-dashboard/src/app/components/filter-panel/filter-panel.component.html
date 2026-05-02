@@ -1,0 +1,22 @@
+<form class="filter-form">
+  <mat-form-field appearance="outline">
+    <mat-label>Preço Máximo</mat-label>
+    <input matInput type="number" [(ngModel)]="filters.maxPrice" (ngModelChange)="filtersChange.emit(filters)" name="maxPrice">
+  </mat-form-field>
+
+  <mat-form-field appearance="outline">
+    <mat-label>Duração Máxima (min)</mat-label>
+    <input matInput type="number" [(ngModel)]="filters.maxDuration" (ngModelChange)="filtersChange.emit(filters)" name="maxDuration">
+  </mat-form-field>
+
+  <mat-form-field appearance="outline">
+    <mat-label>Companhias</mat-label>
+    <mat-select multiple [(ngModel)]="filters.airlines" (ngModelChange)="filtersChange.emit(filters)" name="airlines">
+      <mat-option *ngFor="let airline of availableAirlines" [value]="airline">{{ airline }}</mat-option>
+    </mat-select>
+  </mat-form-field>
+
+  <mat-checkbox [(ngModel)]="filters.directFlightsOnly" (ngModelChange)="filtersChange.emit(filters)" name="directFlightsOnly">
+    Somente voos diretos
+  </mat-checkbox>
+</form>

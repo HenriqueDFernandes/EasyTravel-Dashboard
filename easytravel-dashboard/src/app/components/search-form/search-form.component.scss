@@ -1,0 +1,23 @@
+.search-card {
+  margin: 2rem auto;
+  max-width: 700px;
+  padding: 2rem;
+}
+
+.header-container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.segment-row {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.gradient-button {
+  background: linear-gradient(to right, #10b981, #fb923c) !important;
+  color: white !important;
+}

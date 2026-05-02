@@ -1,0 +1,52 @@
+<mat-card class="search-card">
+  <mat-card-header>
+    <mat-card-title>
+      <div class="header-container">
+        <h2>Buscar Passagens</h2>
+        <mat-button-toggle-group formControlName="tripType" exclusive>
+          <mat-button-toggle value="one-way">Só Ida</mat-button-toggle>
+          <mat-button-toggle value="round-trip">Ida e Volta</mat-button-toggle>
+        </mat-button-toggle-group>
+      </div>
+    </mat-card-title>
+  </mat-card-header>
+  <mat-card-content>
+    <form [formGroup]="searchForm" (ngSubmit)="onSubmit()">
+      <div formArrayName="segments">
+        <div *ngFor="let segment of segments.controls; let i = index" [formGroupName]="i" class="segment-row">
+          <mat-form-field appearance="outline">
+            <mat-label>Origem</mat-label>
+            <input matInput formControlName="origin" required>
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>Destino</mat-label>
+            <input matInput formControlName="destination" required>
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>Data</mat-label>
+            <input matInput [matDatepicker]="picker" formControlName="date" required>
+            <mat-datepicker-toggle matSuffix [for]="picker"></mat-datepicker-toggle>
+            <mat-datepicker #picker></mat-datepicker>
+          </mat-form-field>
+          <button mat-icon-button color="warn" type="button" (click)="removeSegment(i)" *ngIf="segments.length > 1">
+            <mat-icon>remove_circle</mat-icon>
+          </button>
+        </div>
+      </div>
+      <button mat-button color="primary" type="button" (click)="addSegment()">
+        <mat-icon>add</mat-icon> Adicionar Trecho
+      </button>
+      <div *ngIf="tripType === 'round-trip'">
+        <mat-form-field appearance="outline">
+          <mat-label>Data de Volta</mat-label>
+          <input matInput [matDatepicker]="returnPicker" formControlName="returnDate">
+          <mat-datepicker-toggle matSuffix [for]="returnPicker"></mat-datepicker-toggle>
+          <mat-datepicker #returnPicker></mat-datepicker>
+        </mat-form-field>
+      </div>
+      <button mat-raised-button color="primary" class="gradient-button" type="submit" [disabled]="!searchForm.valid">
+        Buscar
+      </button>
+    </form>
+  </mat-card-content>
+</mat-card>

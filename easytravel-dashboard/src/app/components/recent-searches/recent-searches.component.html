@@ -1,0 +1,14 @@
+<mat-list *ngIf="searches.length > 0">
+  <mat-list-item *ngFor="let search of searches">
+    <span>{{ search.origin }} → {{ search.destination }} ({{ search.date }})</span>
+    <button mat-icon-button color="primary" (click)="selectSearch.emit(search)">
+      <mat-icon>search</mat-icon>
+    </button>
+    <button mat-icon-button color="warn" (click)="removeSearch.emit(search.id)">
+      <mat-icon>delete</mat-icon>
+    </button>
+  </mat-list-item>
+</mat-list>
+<div *ngIf="searches.length === 0">
+  <p>Nenhuma busca recente.</p>
+</div>
