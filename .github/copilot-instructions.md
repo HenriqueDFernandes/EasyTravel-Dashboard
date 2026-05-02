@@ -36,7 +36,6 @@ Aplicação de IA generativa:
 - Adapte as sugestões conforme o escopo e tecnologias definidos posteriormente.
 - Atualize este arquivo conforme o projeto evoluir.
 
----
 
 ## Projeto proposto: Dashboard de busca de passagens aéreas
 
@@ -48,5 +47,3 @@ Aplicação de IA generativa:
 - Geração de componentes de interface do usuário (UI): criar componentes Angular para exibir dados de voos.
 - Integração de API: gerar código para consumir APIs externas.
 - Testes: gerar testes para componentes e lógica de requisição.
-
----

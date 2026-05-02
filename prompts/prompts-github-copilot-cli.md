@@ -1,7 +1,34 @@
-Contexto: Estou construindo um agente de monitoramento de preços para roteiros de viagens aéreas. Ele terá um frontend (Angular) para que o usuário selecione cidades e datas, usará APIs gratuitas para buscar preços e notificará por e-mail quando houver reduções. O backend salva dados do usuário em SQLite.
+# Prompt 1 - .gitignore
 
-Objetivo:
-1. Forneça uma avaliação didática da aderência dessa ideia às instruções do projeto (.github/copilot-instructions.md) e descreva os frameworks/apis sugeridas. Salve essa explicação em .github/component_diagram_explanation.md.
-2. Crie um diagrama de componentes simples (mermaid.js) mostrando as interações entre frontend, backend (API), banco de dados e rotina do agente. Salve apenas o código mermaid puro em .github/component_diagram.mmd.
+Contexto: Estou criando um dashboard em Angular com Angular Material em um repositorio para um MVP.
+Objetivo: Ger um arquivo .gitignore para o Angular com os principais arquivos e pastas que devem ser ignorados, como node_modules, cache de testes e configurações locais do editor.
+Estilo: Organize por seções com comentários.
+Resposta: fornceça apenas o conteudo do arquivo .gitignore e crie ele.
 
-Estilo: Seja didático e mantenha explicação e diagrama em arquivos separados.
+# Prompt 2
+
+Contexto: MVP de Dashboard para monitormaneto de preçoes de passagens aéreas.
+Objetivo: Escrever um README inciial com nome do projeto: EasyTravel, descrição do contexto e projeto (seguir copilot-instructions.md), stack, como rodar localmente e roadmap de releases.
+Estilo Markdown simples, direto e profissional.
+Resposta: Crie e escreva o README completo
+
+# Promtp 3
+
+Contexto: Projeto em Angular 19 com Angular Materials;
+Objetivo: Criar estrutura inicial de repositório angular;
+Estilo: Utilizar angular materials para estilização;
+Resposta: forneça um passo a passo de comandos para realizar a estruturação inicial.
+
+# Prompt 4
+
+Contexto: MVP em angular para dashboard de busca preços de passagens aéreas. Os usuários devem poder inserir cidade de saída e destino, opções de ida ou ida e volta, e cidades que desejam passar durante a viagem, criando roteiro com multiplos trechos. O site deve buscar em APIs gratuitas os melhores preços encontrados para esses trechos nas datas previstas pelo usuário, apresentando os resultados de forma clara e intuitiva ao usuário.
+Objetivo: Documente os requisitos funcionais e não funcionais desse MVP;
+Estilo: Direto e profisional, com foco em MVP e não projeto final;
+Resposta: Crie ou atualize docs/escopo.md com a lista de requisitos funcionais, não funcionais e as histórias de usuário para esse MVP. Atualize docs/backlog.md com o detalhamento do roadmap de releases e backlog de atividades.
+
+# Prompt 5
+
+Contexto: Frontend enxuto com chamadas para APIs gratuitas de busca de preço de passagens aéreas;
+Objetivo: gerar diagrama mermaid de componentes e fluxo de dados;
+Estilo: simples, legível e versonavel;
+Resposta: apenas bloco mermaid. Salve o arquivo em docs/ como mermaid-<contexto>.md, usando um nome descritivo para o contexto do diagrama.

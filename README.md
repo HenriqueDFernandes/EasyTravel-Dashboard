@@ -24,8 +24,16 @@ npm start
 ```
 
 ## Roadmap de Releases
-- MVP: Busca e exibição de preços de passagens aéreas
+
+Este projeto é um trabalho acadêmico com escopo limitado (aprox. 30 horas de dedicação). O foco está em demonstrar o uso de IA generativa e boas práticas de desenvolvimento, não em entregar um produto final completo.
+
+### Possíveis Extensões Futuras (fora do escopo do trabalho)
 - Integração com múltiplas APIs de voos
-- Filtros avançados e histórico de buscas
-- Testes automatizados e cobertura
-- Deploy e documentação completa
+- Filtros avançados (preço, duração, companhia)
+- Histórico de buscas recentes
+- Exportação/compartilhamento de resultados
+- Deploy em ambiente público
+- Funcionalidades avançadas de recomendação
+- Melhorias de performance e UX
+- Cobertura de testes ampliada
+- Feedback do usuário e ajustes finais
