@@ -67,3 +67,11 @@ Resposta: diagrama atualizado para refletir o atual estado do repositório
 Contexto: Estou desenvolvendo um dashboard de passagens aéreas
 Objetivo: gerar um icone para a identidade visual do projeto
 Estilo: Estou usando as cores #FF9800 e #4CAF50
+
+
+# Prompt 11 
+
+Contexto: Aplicação Angular para busca de passagens aereas. Fiz alterações no serviço que busca os voos por meio de uma api, que agora é a FlightAPI; Fiz alterações estéticas para melhorar a interface; E troquei o icone da aplicação.
+Objetivo: Divida as modificações em 3 commits e me sugira mensagens para os commits;
+Estilo: Use conventional commits;
+Resposta: Me forneça a lista de quais arquivos vão junto e com quais mensagens em português.
