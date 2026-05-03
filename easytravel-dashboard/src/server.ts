@@ -4,29 +4,48 @@ import {
   isMainModule,
   writeResponseToNodeResponse,
 } from '@angular/ssr/node';
+import 'dotenv/config';
 import express from 'express';
 import { join } from 'node:path';
 
-interface AviationstackFlight {
-  airline?: {
-    name?: string;
-  };
-  flight?: {
-    iata?: string;
-    number?: string;
-  };
-  departure?: {
-    iata?: string;
-    scheduled?: string;
-  };
-  arrival?: {
-    iata?: string;
-    scheduled?: string;
+interface FlightApiPrice {
+  price?: {
+    amount?: number | string;
+    value?: number | string;
   };
 }
 
-interface AviationstackResponse {
-  data?: AviationstackFlight[];
+interface FlightApiPricingOption extends FlightApiPrice {}
+
+interface FlightApiItinerary {
+  id?: string;
+  leg_ids?: string[];
+  pricing_options?: FlightApiPricingOption[];
+}
+
+interface FlightApiLeg {
+  id?: string;
+  departure?: string;
+  arrival?: string;
+  duration?: number;
+  stop_count?: number;
+  marketing_carrier_ids?: number[];
+}
+
+interface FlightApiCarrier {
+  id?: number;
+  name?: string;
+}
+
+interface FlightApiError {
+  message?: string;
+}
+
+interface FlightApiResponse {
+  itineraries?: FlightApiItinerary[];
+  legs?: FlightApiLeg[];
+  carriers?: FlightApiCarrier[];
+  error?: FlightApiError | string;
 }
 
 interface ApiFlight {
@@ -47,28 +66,32 @@ const app = express();
 const angularApp = new AngularNodeAppEngine();
 
 app.get('/api/flights', async (req, res) => {
-  const apiKey = process.env['AVIATIONSTACK_API_KEY'];
+  const apiKey = process.env['FLIGHTAPI_API_KEY']?.trim();
   const origin = req.query['origin']?.toString().trim().toUpperCase();
   const destination = req.query['destination']?.toString().trim().toUpperCase();
   const date = req.query['date']?.toString().trim();
-  const limit = req.query['limit']?.toString().trim() ?? '20';
+  const limit = Number.parseInt(req.query['limit']?.toString().trim() ?? '20', 10);
 
   if (!origin || !destination || !date) {
     res.status(400).json({ message: 'Parâmetros obrigatórios: origin, destination, date.' });
     return;
   }
 
-  if (!apiKey) {
-    res.status(503).json({ message: 'AVIATIONSTACK_API_KEY não configurada no servidor.' });
+  if (!isValidIsoDate(date)) {
+    res.status(400).json({ message: 'Parâmetro date inválido. Use o formato YYYY-MM-DD.' });
     return;
   }
 
-  const upstreamUrl = new URL('https://api.aviationstack.com/v1/flights');
-  upstreamUrl.searchParams.set('access_key', apiKey);
-  upstreamUrl.searchParams.set('dep_iata', origin);
-  upstreamUrl.searchParams.set('arr_iata', destination);
-  upstreamUrl.searchParams.set('flight_date', date);
-  upstreamUrl.searchParams.set('limit', limit);
+  if (!apiKey) {
+    res.status(503).json({ message: 'FLIGHTAPI_API_KEY não configurada no servidor.' });
+    return;
+  }
+
+  const safeLimit = Number.isFinite(limit) && limit > 0 ? limit : 20;
+
+  const upstreamUrl = new URL(
+    `https://api.flightapi.io/onewaytrip/${apiKey}/${origin}/${destination}/${date}/1/0/0/Economy/USD`
+  );
 
   try {
     const upstreamResponse = await fetch(upstreamUrl);
@@ -78,37 +101,135 @@ app.get('/api/flights', async (req, res) => {
       return;
     }
 
-    const payload = (await upstreamResponse.json()) as AviationstackResponse;
-    const flights = mapFlightsFromAviationstack(payload.data ?? [], origin, destination, date);
+    const payload = (await upstreamResponse.json()) as FlightApiResponse;
+
+    if (payload.error) {
+      const errorMessage = typeof payload.error === 'string'
+        ? payload.error
+        : payload.error.message;
+
+      res.status(502).json({ message: errorMessage ?? 'Resposta inválida do provedor de voos.' });
+      return;
+    }
+
+    const mappedFlights = mapFlightsFromFlightApi(payload, origin, destination, date);
+    const flights = mappedFlights.slice(0, safeLimit);
+
     res.json(flights);
   } catch {
     res.status(502).json({ message: 'Erro de comunicação com o provedor de voos.' });
   }
 });
 
-function mapFlightsFromAviationstack(
-  flights: AviationstackFlight[],
+function mapFlightsFromFlightApi(
+  response: FlightApiResponse,
   origin: string,
   destination: string,
   fallbackDate: string,
 ): ApiFlight[] {
-  return flights.map((flightData, index) => {
-    const departure = flightData.departure?.scheduled ?? `${fallbackDate}T08:00:00.000Z`;
-    const arrival = flightData.arrival?.scheduled ?? `${fallbackDate}T11:00:00.000Z`;
-    const idSeed = flightData.flight?.iata ?? flightData.flight?.number ?? `${origin}${destination}`;
+  const legsById = new Map((response.legs ?? []).flatMap((leg) => leg.id ? [[leg.id, leg] as const] : []));
+  const carriersById = new Map((response.carriers ?? []).flatMap((carrier) => {
+    if (typeof carrier.id !== 'number') {
+      return [];
+    }
 
-    return {
-      id: `${idSeed}-${index}`,
-      airline: flightData.airline?.name ?? 'Companhia não informada',
-      price: estimatePrice(origin, destination, idSeed),
-      duration: getDurationLabel(departure, arrival),
+    return [[carrier.id, carrier.name ?? 'Companhia não informada'] as const];
+  }));
+
+  return (response.itineraries ?? []).flatMap((itinerary, index) => {
+    const price = getRealPriceFromPricingOptions(itinerary.pricing_options ?? []);
+
+    if (price === null) {
+      return [];
+    }
+
+    const primaryLegId = itinerary.leg_ids?.[0];
+    const leg = primaryLegId ? legsById.get(primaryLegId) : undefined;
+
+    const departure = leg?.departure ?? `${fallbackDate}T08:00:00.000Z`;
+    const arrival = leg?.arrival ?? `${fallbackDate}T11:00:00.000Z`;
+
+    const airline =
+      (leg?.marketing_carrier_ids ?? [])
+        .map((carrierId) => carriersById.get(carrierId))
+        .find((name) => Boolean(name))
+      ?? 'Companhia não informada';
+
+    const duration = typeof leg?.duration === 'number' && leg.duration > 0
+      ? formatDurationFromMinutes(leg.duration)
+      : getDurationLabel(departure, arrival);
+
+    return [{
+      id: itinerary.id ?? `${origin}${destination}-${index}`,
+      airline,
+      price,
+      duration,
       departure,
       arrival,
-      stops: 0,
-      origin: flightData.departure?.iata ?? origin,
-      destination: flightData.arrival?.iata ?? destination,
-    };
+      stops: leg?.stop_count ?? 0,
+      origin,
+      destination,
+    }];
   });
+}
+
+function getRealPriceFromPricingOptions(pricingOptions: FlightApiPricingOption[]): number | null {
+  const candidateValues = pricingOptions.map((option) => option.price?.amount ?? option.price?.value);
+
+  for (const candidate of candidateValues) {
+    const numeric = normalizePrice(candidate);
+
+    if (numeric !== null) {
+      return numeric;
+    }
+  }
+
+  return null;
+}
+
+function formatDurationFromMinutes(totalMinutes: number): string {
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+
+  return `${hours}h ${minutes}m`;
+}
+
+function normalizePrice(value: number | string | undefined): number | null {
+  if (typeof value === 'number' && Number.isFinite(value) && value > 0) {
+    return Math.round(value * 100) / 100;
+  }
+
+  if (typeof value !== 'string') {
+    return null;
+  }
+
+  const normalized = Number.parseFloat(value.replace(',', '.'));
+
+  if (!Number.isFinite(normalized) || normalized <= 0) {
+    return null;
+  }
+
+  return Math.round(normalized * 100) / 100;
+}
+
+function isValidIsoDate(value: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return false;
+  }
+
+  const [year, month, day] = value.split('-').map(Number);
+
+  if (!year || !month || !day) {
+    return false;
+  }
+
+  const parsed = new Date(Date.UTC(year, month - 1, day));
+
+  return (
+    parsed.getUTCFullYear() === year
+    && parsed.getUTCMonth() === month - 1
+    && parsed.getUTCDate() === day
+  );
 }
 
 function getDurationLabel(departureIso: string, arrivalIso: string): string {
@@ -124,13 +245,6 @@ function getDurationLabel(departureIso: string, arrivalIso: string): string {
   const minutes = totalMinutes % 60;
 
   return `${hours}h ${minutes}m`;
-}
-
-function estimatePrice(origin: string, destination: string, seed: string): number {
-  const routeFactor = (origin.charCodeAt(0) + destination.charCodeAt(0)) % 10;
-  const seedFactor = Array.from(seed).reduce((acc, char) => acc + char.charCodeAt(0), 0) % 500;
-
-  return 400 + routeFactor * 70 + seedFactor;
 }
 
 /**

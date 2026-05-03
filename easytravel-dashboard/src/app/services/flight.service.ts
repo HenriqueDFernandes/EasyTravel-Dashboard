@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { Observable, forkJoin, of } from 'rxjs';
-import { catchError, map } from 'rxjs/operators';
+import { Observable, TimeoutError, forkJoin, of, throwError } from 'rxjs';
+import { catchError, map, tap, timeout } from 'rxjs/operators';
 import { Flight } from '../models/flight.model';
 import { FlightSegment, SearchQuery } from '../models/search.model';
 import { environment } from '../../environments/environment';
@@ -60,11 +60,23 @@ export class FlightService {
       .set('date', this.formatDate(segment.date))
       .set('limit', environment.requestLimit.toString());
 
+    const endpoint = `${environment.apiBaseUrl}/flights`;
+    const requestUrl = `${endpoint}?${params.toString()}`;
+
     return this.http
-      .get<Flight[]>(`${environment.apiBaseUrl}/flights`, { params })
+      .get<Flight[]>(endpoint, { params })
       .pipe(
+        timeout(30000),
         map((flights) => flights ?? []),
-        catchError(() => of(this.getMockFlightsBySegment(segment)))
+        catchError((error: unknown) => {
+          if (error instanceof TimeoutError) {
+            console.log('[FlightService] Timeout de 30s na busca de voos. Requisição cancelada:', requestUrl);
+          } else {
+            console.log('[FlightService] Erro na busca de voos. Requisição interrompida:', requestUrl, error);
+          }
+
+          return throwError(() => error);
+        })
       );
   }
 
