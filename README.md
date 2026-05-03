@@ -12,6 +12,12 @@ EasyTravel é um MVP desenvolvido como parte de uma especialização em GenAI qu
 
 O projeto consiste em um **dashboard web responsivo** para busca de passagens aéreas em rotas brasileiras, com integração em tempo real com a API [FlightAPI](https://www.flightapi.io/) e práticas modernas de desenvolvimento Angular.
 
+### 🖼️ Prints da Aplicação
+
+![Formulário de busca](docs/prints/Formulario_de_busca.png)
+
+![Filtros e resultados](docs/prints/Filtros_e_resultados.png)
+
 ### Contexto do Projeto
 - **Propósito**: Explorar GenAI no desenvolvimento full-stack
 - **Escopo**: MVP com funcionalidades core (~30h de desenvolvimento)
