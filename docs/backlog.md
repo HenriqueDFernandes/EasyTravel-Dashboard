@@ -1,46 +1,62 @@
 # Backlog de Releases e Atividades
 
+Backlog atualizado para refletir o que foi entregue no MVP `v1.0.0-mvp` e o roadmap descrito no README.
 
-## Release 1: Desenvolvimento (Core)
-- [ ] Implementação da busca de passagens aéreas (origem, destino, datas)
-- [X] Opção de ida ou ida e volta
-- [X] Adição de cidades intermediárias (multitrechos)
-- [ ] Integração com pelo menos uma API gratuita de voos
-- [ ] Exibição clara dos resultados (preço, datas, companhias)
-- [ ] Interface responsiva (desktop/mobile)
+## Release v1.0.0-mvp (Concluida)
 
-### Detalhamento: Integração com Serviço Único de Voos
-- [X] Definir um único provedor externo para o MVP (Aviationstack)
-- [X] Criar configuração central da API (base URL, apiKey, limite) no frontend
-- [X] Evoluir `FlightService` para estratégia de provedor único por segmento
-- [X] Suportar busca multitrechos com agregação de resultados por `forkJoin`
-- [X] Mapear payload externo para modelo interno de `Flight`
-- [X] Manter fallback local (mock) quando não houver chave configurada
-- [ ] Configurar `apiKey` de desenvolvimento para chamada real da API
-- [ ] Validar cenários reais: ida, ida/volta e multitrechos
-- [ ] Ajustar regra de preço quando API de produção não retornar fare
-- [ ] Documentar setup da chave e limitações do provedor no README
+### Search Core
+- [x] Busca por origem, destino e data
+- [x] Suporte para ida/volta e multiplos trechos
+- [x] Historico de buscas recentes (localStorage)
+- [x] Integracao com FlightAPI
 
+### Filtering & Sorting
+- [x] Filtro por preco maximo
+- [x] Filtro por duracao maxima
+- [x] Filtro por companhia (fuzzy matching)
+- [x] Filtro por voos diretos
+- [x] Ordenacao por preco, duracao e horario
 
-## Release 2: Testes e Validação
-- [ ] Testes básicos dos componentes principais
-- [ ] Validação das funcionalidades principais
-- [ ] Ajustes de usabilidade e correção de bugs
-- [ ] Documentação do processo e decisões técnicas
+### UI/UX
+- [x] Interface responsiva (mobile-first)
+- [x] Componentes Angular Material
+- [x] Spinner de carregamento com estados
+- [x] Tema customizado e favicon
 
+### Backend, Integracao e Confiabilidade
+- [x] Backend SSR com Express (`/api/flights`)
+- [x] Chave da API protegida em `.env`
+- [x] Validacao de parametros e datas ISO
+- [x] Tratamento de erros HTTP do provedor
+- [x] Modo demo com fallback de dados ficticios quando FlightAPI falha
 
-## Release 3: Entrega Final
-- [ ] Revisão geral do código e documentação
-- [ ] Preparação do material de entrega acadêmica
-- [ ] Registro das limitações e próximos passos sugeridos
+### Qualidade e Documentacao
+- [x] Suite de testes unitarios/servico com Vitest (27 testes)
+- [x] README atualizado com setup, troubleshooting, roadmap e uso de IA
+- [x] Tag de release criada: `v1.0.0-mvp`
 
-## Possíveis Extensões Futuras (fora do escopo do trabalho)
-- [ ] Integração com múltiplas APIs de voos
-- [ ] Filtros avançados (preço, duração, companhia)
-- [ ] Histórico de buscas recentes
-- [ ] Exportação/compartilhamento de resultados
-- [ ] Deploy em ambiente público
-- [ ] Funcionalidades avançadas de recomendação
-- [ ] Melhorias de performance e UX
-- [ ] Cobertura de testes ampliada
-- [ ] Feedback do usuário e ajustes finais
+## Release v1.1.0 - Multiplos Trechos & Paradas
+- [ ] Suporte para ate 5 segmentos em uma unica busca
+- [ ] Calculo automatico de conexoes e tempo de espera
+- [ ] Visualizacao de paradas intermediarias
+- [ ] Itinerarios complexos com melhor UX
+
+## Release v1.2.0 - Controle de Usuarios & Preferencias
+- [ ] Autenticacao com email/senha
+- [ ] Perfis de usuario com preferencias personalizadas
+- [ ] Salvar e gerenciar buscas favoritas
+- [ ] Historico sincronizado entre dispositivos
+- [ ] Recomendacoes baseadas em historico
+
+## Release v1.3.0 - Alertas Automaticos & Notificacoes
+- [ ] Sistema de alertas de preco por rota
+- [ ] Email digest com melhores ofertas
+- [ ] Notificacoes push no navegador
+- [ ] Rastreamento de voos e status em tempo real
+- [ ] Alertas customizaveis por rota favorita
+
+## Melhorias Tecnicas Pos-MVP
+- [ ] Retry automatico com backoff exponencial
+- [ ] Cache de resultados para reduzir dependencia de API externa
+- [ ] Observabilidade (logs estruturados e metricas de falha)
+- [ ] Estrategia para aumento de cobertura de testes (incluindo E2E)

@@ -3,13 +3,15 @@
 ## Requisitos Funcionais
 - Permitir ao usuário inserir cidade de origem e destino
 - Permitir seleção de ida ou ida e volta
-- Permitir adicionar cidades intermediárias (multitrechos)
 - Permitir seleção de datas para cada trecho
 - Buscar preços em APIs gratuitas de passagens aéreas
 - Exibir resultados de forma clara, intuitiva e responsiva
 - Permitir ordenação e filtragem dos resultados (por preço, duração, companhia)
 - Exibir detalhes do voo: preço, datas, horários, companhias, escalas
 - Histórico de buscas recentes
+- Permitir adicionar cidades intermediárias (multitrechos) (adiado para o próximo release)
+
+**Nota**: O suporte completo a multitrechos foi priorizado para o próximo release (v1.1.0).
 
 ## Requisitos Não Funcionais
 - Interface responsiva (desktop/mobile)
