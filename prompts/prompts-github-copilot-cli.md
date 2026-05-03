@@ -75,3 +75,10 @@ Contexto: Aplicação Angular para busca de passagens aereas. Fiz alterações n
 Objetivo: Divida as modificações em 3 commits e me sugira mensagens para os commits;
 Estilo: Use conventional commits;
 Resposta: Me forneça a lista de quais arquivos vão junto e com quais mensagens em português.
+
+# Prompt 12
+
+Contexto: Dashboard de busca por voos. A opção de busca ida e volta esta mostrando apenas voos de ia. Há um filtro para mostrar apenas 10 voos que pode ser um dos motivos de não mostrar todos; No frontend não há um indicador de que divida voos de ida e volta;
+Objetivo: Refatorar o backend para devolver os 10 primeiros voos de ida e os 10 primeiros voos de volta separados. Refatorar o frontend para receber o novo formato de resposta e colocar marcador que divida voos de ida e volta quando for utilziado essa opçao. Quando for só ida, mostrar só o marcador de Ida.
+Estilo: comente as funções descrevendo o uso;
+Resposta: refatore o backend e o frontend
