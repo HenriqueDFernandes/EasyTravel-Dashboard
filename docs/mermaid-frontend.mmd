@@ -18,12 +18,12 @@ flowchart TD
 
     subgraph BE[Backend SSR - Node/Express]
         API[/GET /api/flights/]
-        MAP[Mapeamento Aviationstack -> Flight]
-        KEY[(AVIATIONSTACK_API_KEY)]
+        MAP[Mapeamento FlightAPI -> Flight]
+        KEY[(FLIGHTAPI_API_KEY)]
     end
 
     subgraph EXT[Servico Externo]
-        AV[Aviationstack API]
+        AV[FlightAPI]
     end
 
     SF -->|SearchQuery| AC
