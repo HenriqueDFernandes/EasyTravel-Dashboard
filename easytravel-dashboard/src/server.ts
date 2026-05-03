@@ -6,6 +6,7 @@ import {
 } from '@angular/ssr/node';
 import 'dotenv/config';
 import express from 'express';
+import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
 interface FlightApiPrice {
@@ -21,6 +22,10 @@ interface FlightApiItinerary {
   id?: string;
   leg_ids?: string[];
   pricing_options?: FlightApiPricingOption[];
+  cheapest_price?: {
+    amount?: number | string;
+    value?: number | string;
+  };
 }
 
 interface FlightApiLeg {
@@ -60,16 +65,26 @@ interface ApiFlight {
   destination: string;
 }
 
+interface ApiFlightSearchResults {
+  tripType: 'one-way' | 'round-trip';
+  outboundFlights: ApiFlight[];
+  returnFlights: ApiFlight[];
+}
+
 const browserDistFolder = join(import.meta.dirname, '../browser');
+const logsFolder = join(process.cwd(), 'logs');
 
 const app = express();
 const angularApp = new AngularNodeAppEngine();
 
+// Encaminha buscas one-way e round-trip para a FlightAPI e devolve listas separadas por direcao.
 app.get('/api/flights', async (req, res) => {
   const apiKey = process.env['FLIGHTAPI_API_KEY']?.trim();
   const origin = req.query['origin']?.toString().trim().toUpperCase();
   const destination = req.query['destination']?.toString().trim().toUpperCase();
   const date = req.query['date']?.toString().trim();
+  const returnDate = req.query['returnDate']?.toString().trim();
+  const tripType = (req.query['tripType']?.toString().trim() ?? 'one-way') as 'one-way' | 'round-trip';
   const limit = Number.parseInt(req.query['limit']?.toString().trim() ?? '20', 10);
 
   if (!origin || !destination || !date) {
@@ -82,6 +97,16 @@ app.get('/api/flights', async (req, res) => {
     return;
   }
 
+  if (tripType === 'round-trip' && !returnDate) {
+    res.status(400).json({ message: 'Parâmetro returnDate é obrigatório para buscas round-trip.' });
+    return;
+  }
+
+  if (returnDate && !isValidIsoDate(returnDate)) {
+    res.status(400).json({ message: 'Parâmetro returnDate inválido. Use o formato YYYY-MM-DD.' });
+    return;
+  }
+
   if (!apiKey) {
     res.status(503).json({ message: 'FLIGHTAPI_API_KEY não configurada no servidor.' });
     return;
@@ -89,19 +114,37 @@ app.get('/api/flights', async (req, res) => {
 
   const safeLimit = Number.isFinite(limit) && limit > 0 ? limit : 20;
 
-  const upstreamUrl = new URL(
-    `https://api.flightapi.io/onewaytrip/${apiKey}/${origin}/${destination}/${date}/1/0/0/Economy/USD`
-  );
+  let upstreamUrl: URL;
+  if (tripType === 'round-trip' && returnDate) {
+    upstreamUrl = new URL(
+      `https://api.flightapi.io/roundtrip/${apiKey}/${origin}/${destination}/${date}/${returnDate}/1/0/0/Economy/BRL`
+    );
+  } else {
+    upstreamUrl = new URL(
+      `https://api.flightapi.io/onewaytrip/${apiKey}/${origin}/${destination}/${date}/1/0/0/Economy/BRL`
+    );
+  }
 
   try {
     const upstreamResponse = await fetch(upstreamUrl);
+    const rawPayload = await upstreamResponse.text();
+
+    await writeRawFlightApiResponse({
+      tripType,
+      origin,
+      destination,
+      date,
+      returnDate,
+      status: upstreamResponse.status,
+      payload: rawPayload,
+    });
 
     if (!upstreamResponse.ok) {
       res.status(upstreamResponse.status).json({ message: 'Falha na consulta ao provedor de voos.' });
       return;
     }
 
-    const payload = (await upstreamResponse.json()) as FlightApiResponse;
+    const payload = parseFlightApiResponse(rawPayload);
 
     if (payload.error) {
       const errorMessage = typeof payload.error === 'string'
@@ -112,21 +155,60 @@ app.get('/api/flights', async (req, res) => {
       return;
     }
 
-    const mappedFlights = mapFlightsFromFlightApi(payload, origin, destination, date);
-    const flights = mappedFlights.slice(0, safeLimit);
+    const mappedResults = mapFlightsFromFlightApi(payload, origin, destination, date, returnDate, tripType);
 
-    res.json(flights);
+    res.json({
+      tripType,
+      outboundFlights: mappedResults.outboundFlights.slice(0, safeLimit),
+      returnFlights: mappedResults.returnFlights.slice(0, safeLimit),
+    });
   } catch {
     res.status(502).json({ message: 'Erro de comunicação com o provedor de voos.' });
   }
 });
 
+// Salva a resposta crua da FlightAPI para depuracao sem afetar o fluxo da aplicacao.
+async function writeRawFlightApiResponse(entry: {
+  tripType: 'one-way' | 'round-trip';
+  origin: string;
+  destination: string;
+  date: string;
+  returnDate?: string;
+  status: number;
+  payload: string;
+}): Promise<void> {
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+  const returnSuffix = entry.returnDate ? `-${entry.returnDate}` : '';
+  const fileName = `${timestamp}-${entry.tripType}-${entry.origin}-${entry.destination}-${entry.date}${returnSuffix}-status-${entry.status}.json`;
+
+  try {
+    await mkdir(logsFolder, { recursive: true });
+    await writeFile(join(logsFolder, fileName), entry.payload, 'utf-8');
+  } catch (error) {
+    console.error('Falha ao salvar log cru da FlightAPI:', error);
+  }
+}
+
+// Faz o parse seguro do payload cru retornado pela FlightAPI antes do mapeamento interno.
+function parseFlightApiResponse(rawPayload: string): FlightApiResponse {
+  try {
+    return JSON.parse(rawPayload) as FlightApiResponse;
+  } catch {
+    return {
+      error: 'Resposta não está em JSON válido.',
+    };
+  }
+}
+
+// Converte a resposta da FlightAPI no contrato consumido pelo frontend, separando ida e volta.
 function mapFlightsFromFlightApi(
   response: FlightApiResponse,
   origin: string,
   destination: string,
   fallbackDate: string,
-): ApiFlight[] {
+  returnFallbackDate: string | undefined,
+  tripType: 'one-way' | 'round-trip' = 'one-way',
+): ApiFlightSearchResults {
   const legsById = new Map((response.legs ?? []).flatMap((leg) => leg.id ? [[leg.id, leg] as const] : []));
   const carriersById = new Map((response.carriers ?? []).flatMap((carrier) => {
     if (typeof carrier.id !== 'number') {
@@ -136,45 +218,114 @@ function mapFlightsFromFlightApi(
     return [[carrier.id, carrier.name ?? 'Companhia não informada'] as const];
   }));
 
-  return (response.itineraries ?? []).flatMap((itinerary, index) => {
-    const price = getRealPriceFromPricingOptions(itinerary.pricing_options ?? []);
+  const outboundFlights: ApiFlight[] = [];
+  const returnFlights: ApiFlight[] = [];
+
+  (response.itineraries ?? []).forEach((itinerary, index) => {
+    const price = getRealPriceFromPricingOptions(itinerary.pricing_options ?? [], itinerary.cheapest_price);
 
     if (price === null) {
-      return [];
+      return;
     }
 
-    const primaryLegId = itinerary.leg_ids?.[0];
-    const leg = primaryLegId ? legsById.get(primaryLegId) : undefined;
+    const outboundLeg = itinerary.leg_ids?.[0] ? legsById.get(itinerary.leg_ids[0]) : undefined;
+    const outboundFlight = createApiFlightFromLeg(
+      outboundLeg,
+      carriersById,
+      {
+        id: `${itinerary.id ?? `${origin}${destination}-${index}`}-outbound`,
+        price,
+        origin,
+        destination,
+        fallbackDate,
+      },
+    );
 
-    const departure = leg?.departure ?? `${fallbackDate}T08:00:00.000Z`;
-    const arrival = leg?.arrival ?? `${fallbackDate}T11:00:00.000Z`;
+    if (outboundFlight) {
+      outboundFlights.push(outboundFlight);
+    }
 
-    const airline =
-      (leg?.marketing_carrier_ids ?? [])
-        .map((carrierId) => carriersById.get(carrierId))
-        .find((name) => Boolean(name))
-      ?? 'Companhia não informada';
+    if (tripType !== 'round-trip') {
+      return;
+    }
 
-    const duration = typeof leg?.duration === 'number' && leg.duration > 0
-      ? formatDurationFromMinutes(leg.duration)
-      : getDurationLabel(departure, arrival);
+    const returnLeg = itinerary.leg_ids?.[1] ? legsById.get(itinerary.leg_ids[1]) : undefined;
+    const returnFlight = createApiFlightFromLeg(
+      returnLeg,
+      carriersById,
+      {
+        id: `${itinerary.id ?? `${origin}${destination}-${index}`}-return`,
+        price,
+        origin: destination,
+        destination: origin,
+        fallbackDate: returnFallbackDate ?? fallbackDate,
+      },
+    );
 
-    return [{
-      id: itinerary.id ?? `${origin}${destination}-${index}`,
-      airline,
-      price,
-      duration,
-      departure,
-      arrival,
-      stops: leg?.stop_count ?? 0,
-      origin,
-      destination,
-    }];
+    if (returnFlight) {
+      returnFlights.push(returnFlight);
+    }
   });
+
+  return {
+    tripType,
+    outboundFlights,
+    returnFlights,
+  };
 }
 
-function getRealPriceFromPricingOptions(pricingOptions: FlightApiPricingOption[]): number | null {
-  const candidateValues = pricingOptions.map((option) => option.price?.amount ?? option.price?.value);
+// Monta um voo da aplicacao a partir de um leg da FlightAPI, preservando o preco do itinerario.
+function createApiFlightFromLeg(
+  leg: FlightApiLeg | undefined,
+  carriersById: Map<number, string>,
+  options: {
+    id: string;
+    price: number;
+    origin: string;
+    destination: string;
+    fallbackDate: string;
+  },
+): ApiFlight | null {
+  if (!leg) {
+    return null;
+  }
+
+  const departure = leg.departure ?? `${options.fallbackDate}T08:00:00.000Z`;
+  const arrival = leg.arrival ?? `${options.fallbackDate}T11:00:00.000Z`;
+
+  const airline =
+    (leg.marketing_carrier_ids ?? [])
+      .map((carrierId) => carriersById.get(carrierId))
+      .find((name) => Boolean(name))
+    ?? 'Companhia não informada';
+
+  const duration = typeof leg.duration === 'number' && leg.duration > 0
+    ? formatDurationFromMinutes(leg.duration)
+    : getDurationLabel(departure, arrival);
+
+  return {
+    id: options.id,
+    airline,
+    price: options.price,
+    duration,
+    departure,
+    arrival,
+    stops: leg.stop_count ?? 0,
+    origin: options.origin,
+    destination: options.destination,
+  };
+}
+
+// Extrai o preco utilizavel do itinerario a partir das opcoes de compra retornadas pela API.
+function getRealPriceFromPricingOptions(
+  pricingOptions: FlightApiPricingOption[],
+  cheapestPrice?: { amount?: number | string; value?: number | string },
+): number | null {
+  const candidateValues = [
+    ...pricingOptions.map((option) => option.price?.amount ?? option.price?.value),
+    cheapestPrice?.amount,
+    cheapestPrice?.value,
+  ];
 
   for (const candidate of candidateValues) {
     const numeric = normalizePrice(candidate);

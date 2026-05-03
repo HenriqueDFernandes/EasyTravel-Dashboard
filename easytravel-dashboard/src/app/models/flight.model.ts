@@ -9,3 +9,9 @@ export interface Flight {
   origin: string;
   destination: string;
 }
+
+export interface FlightSearchResults {
+  tripType: 'one-way' | 'round-trip';
+  outboundFlights: Flight[];
+  returnFlights: Flight[];
+}

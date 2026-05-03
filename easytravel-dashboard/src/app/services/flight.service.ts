@@ -1,8 +1,8 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { Observable, TimeoutError, forkJoin, of, throwError } from 'rxjs';
-import { catchError, map, tap, timeout } from 'rxjs/operators';
-import { Flight } from '../models/flight.model';
+import { Observable, TimeoutError, of, throwError } from 'rxjs';
+import { catchError, map, timeout } from 'rxjs/operators';
+import { Flight, FlightSearchResults } from '../models/flight.model';
 import { FlightSegment, SearchQuery } from '../models/search.model';
 import { environment } from '../../environments/environment';
 
@@ -37,23 +37,56 @@ export class FlightService {
 
   constructor(private http: HttpClient) {}
 
-  searchFlights(query: SearchQuery): Observable<Flight[]> {
+  // Escolhe o tipo de busca suportado pelo frontend atual: so ida ou ida e volta.
+  searchFlights(query: SearchQuery): Observable<FlightSearchResults> {
     const segments = query.segments.filter(
       (segment) => segment.origin && segment.destination && segment.date
     );
 
     if (segments.length === 0) {
-      return of([]);
+      return of(this.createEmptyResults(query.tripType));
     }
 
-    const segmentRequests = segments.map((segment) => this.searchBySegment(segment));
+    if (query.tripType === 'round-trip' && query.returnDate) {
+      const segment = segments[0];
+      return this.searchRoundTrip(segment, query.returnDate);
+    }
 
-    return forkJoin(segmentRequests).pipe(
-      map((segmentResults) => segmentResults.flat())
-    );
+    return this.searchOneWay(segments[0]);
   }
 
-  private searchBySegment(segment: FlightSegment): Observable<Flight[]> {
+  // Busca ida e volta em um unico request e recebe as duas listas separadas.
+  private searchRoundTrip(segment: FlightSegment, returnDate: Date): Observable<FlightSearchResults> {
+    const params = new HttpParams()
+      .set('origin', segment.origin)
+      .set('destination', segment.destination)
+      .set('date', this.formatDate(segment.date))
+      .set('returnDate', this.formatDate(returnDate))
+      .set('tripType', 'round-trip')
+      .set('limit', environment.requestLimit.toString());
+
+    const endpoint = `${environment.apiBaseUrl}/flights`;
+    const requestUrl = `${endpoint}?${params.toString()}`;
+
+    return this.http
+      .get<FlightSearchResults>(endpoint, { params })
+      .pipe(
+        timeout(30000),
+        map((results) => results ?? this.createEmptyResults('round-trip')),
+        catchError((error: unknown) => {
+          if (error instanceof TimeoutError) {
+            console.log('[FlightService] Timeout de 30s na busca round-trip. Requisição cancelada:', requestUrl);
+          } else {
+            console.log('[FlightService] Erro na busca round-trip. Requisição interrompida:', requestUrl, error);
+          }
+
+          return throwError(() => error);
+        })
+      );
+  }
+
+  // Busca apenas os voos de ida e normaliza a resposta para o contrato agrupado.
+  private searchOneWay(segment: FlightSegment): Observable<FlightSearchResults> {
     const params = new HttpParams()
       .set('origin', segment.origin)
       .set('destination', segment.destination)
@@ -64,10 +97,10 @@ export class FlightService {
     const requestUrl = `${endpoint}?${params.toString()}`;
 
     return this.http
-      .get<Flight[]>(endpoint, { params })
+      .get<FlightSearchResults>(endpoint, { params })
       .pipe(
         timeout(30000),
-        map((flights) => flights ?? []),
+        map((results) => results ?? this.createEmptyResults('one-way')),
         catchError((error: unknown) => {
           if (error instanceof TimeoutError) {
             console.log('[FlightService] Timeout de 30s na busca de voos. Requisição cancelada:', requestUrl);
@@ -78,6 +111,15 @@ export class FlightService {
           return throwError(() => error);
         })
       );
+  }
+
+  // Cria a estrutura vazia usada pelo frontend quando nao ha resultados.
+  private createEmptyResults(tripType: SearchQuery['tripType']): FlightSearchResults {
+    return {
+      tripType,
+      outboundFlights: [],
+      returnFlights: [],
+    };
   }
 
   private getMockFlightsBySegment(segment: FlightSegment): Flight[] {

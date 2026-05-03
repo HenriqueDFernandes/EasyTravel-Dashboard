@@ -23,6 +23,7 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
+easytravel-dashboard/logs/
 
 # TypeScript and build artifacts
 *.tsbuildinfo
