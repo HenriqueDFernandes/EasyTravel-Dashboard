@@ -36,4 +36,10 @@ body {
   margin: 0;
   height: 100%;
 }
+
+.app-error-snackbar {
+  --mdc-snackbar-container-color: #8b1e1e;
+  --mdc-snackbar-supporting-text-color: #fff7f7;
+  --mat-snack-bar-button-color: #ffd6d6;
+}
 /* You can add global styles to this file, and also import other style files */

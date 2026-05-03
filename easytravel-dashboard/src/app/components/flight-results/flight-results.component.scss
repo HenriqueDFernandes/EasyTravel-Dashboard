@@ -19,6 +19,29 @@
   margin-bottom: 1.5rem;
 }
 
+.results-section {
+  margin-bottom: 2rem;
+}
+
+.section-title {
+  display: inline-flex;
+  align-items: center;
+  margin-bottom: 1rem;
+  padding: 0.45rem 0.9rem;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(76, 175, 80, 0.14), rgba(255, 152, 0, 0.16));
+  color: #1f4d2f;
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.empty-state {
+  margin-bottom: 1rem;
+  color: #51616d;
+}
+
 .flight-info {
   display: flex;
   flex-wrap: wrap;

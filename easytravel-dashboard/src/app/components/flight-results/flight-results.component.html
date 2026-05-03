@@ -1,18 +1,45 @@
-<div *ngIf="flights.length === 0">
-  <p>Nenhum voo encontrado.</p>
-</div>
+<section class="results-section">
+  <div class="section-title">Ida</div>
 
-<div *ngFor="let flight of flights" class="flight-card">
-  <mat-card>
-    <mat-card-title>{{ flight.origin }} → {{ flight.destination }}</mat-card-title>
-    <mat-card-content>
-      <div class="flight-info">
-        <span><mat-icon>flight</mat-icon> {{ flight.airline }}</span>
-        <span><mat-icon>schedule</mat-icon> {{ flight.duration }}</span>
-        <span><mat-icon>attach_money</mat-icon> {{ flight.price | currency:'BRL' }}</span>
-        <span><mat-icon>airline_stops</mat-icon> {{ flight.stops }} escala(s)</span>
-        <span><mat-icon>calendar_today</mat-icon> {{ flight.departure | date:'short' }} - {{ flight.arrival | date:'short' }}</span>
-      </div>
-    </mat-card-content>
-  </mat-card>
-</div>
+  <div *ngIf="getSectionFlights('outbound').length === 0" class="empty-state">
+    <p>Nenhum voo de ida encontrado.</p>
+  </div>
+
+  <div *ngFor="let flight of getSectionFlights('outbound')" class="flight-card">
+    <mat-card>
+      <mat-card-title>{{ flight.origin }} → {{ flight.destination }}</mat-card-title>
+      <mat-card-content>
+        <div class="flight-info">
+          <span><mat-icon>flight_takeoff</mat-icon> {{ flight.airline }}</span>
+          <span><mat-icon>schedule</mat-icon> {{ flight.duration }}</span>
+          <span><mat-icon>attach_money</mat-icon> {{ flight.price | currency:'BRL' }}</span>
+          <span><mat-icon>airline_stops</mat-icon> {{ flight.stops }} escala(s)</span>
+          <span><mat-icon>calendar_today</mat-icon> {{ flight.departure | date:'short' }} - {{ flight.arrival | date:'short' }}</span>
+        </div>
+      </mat-card-content>
+    </mat-card>
+  </div>
+</section>
+
+<section *ngIf="results.tripType === 'round-trip'" class="results-section">
+  <div class="section-title">Volta</div>
+
+  <div *ngIf="getSectionFlights('return').length === 0" class="empty-state">
+    <p>Nenhum voo de volta encontrado.</p>
+  </div>
+
+  <div *ngFor="let flight of getSectionFlights('return')" class="flight-card">
+    <mat-card>
+      <mat-card-title>{{ flight.origin }} → {{ flight.destination }}</mat-card-title>
+      <mat-card-content>
+        <div class="flight-info">
+          <span><mat-icon>flight_land</mat-icon> {{ flight.airline }}</span>
+          <span><mat-icon>schedule</mat-icon> {{ flight.duration }}</span>
+          <span><mat-icon>attach_money</mat-icon> {{ flight.price | currency:'BRL' }}</span>
+          <span><mat-icon>airline_stops</mat-icon> {{ flight.stops }} escala(s)</span>
+          <span><mat-icon>calendar_today</mat-icon> {{ flight.departure | date:'short' }} - {{ flight.arrival | date:'short' }}</span>
+        </div>
+      </mat-card-content>
+    </mat-card>
+  </div>
+</section>

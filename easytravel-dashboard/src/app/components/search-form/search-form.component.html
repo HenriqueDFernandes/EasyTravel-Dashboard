@@ -51,14 +51,8 @@
             <mat-datepicker-toggle matSuffix [for]="picker"></mat-datepicker-toggle>
             <mat-datepicker #picker></mat-datepicker>
           </mat-form-field>
-          <button mat-icon-button color="warn" type="button" (click)="removeSegment(i)" *ngIf="segments.length > 1">
-            <mat-icon>remove_circle</mat-icon>
-          </button>
         </div>
       </div>
-      <button mat-button color="primary" type="button" (click)="addSegment()">
-        <mat-icon>add</mat-icon> Adicionar Trecho
-      </button>
       <p class="airport-helper-text">Digite cidade, estado ou código IATA e escolha um aeroporto sugerido.</p>
       <div *ngIf="tripType === 'round-trip'">
         <mat-form-field appearance="outline">

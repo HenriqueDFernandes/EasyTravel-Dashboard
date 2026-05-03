@@ -137,18 +137,6 @@ export class SearchFormComponent {
     };
   }
 
-  addSegment(): void {
-    const lastSegment = this.segments.at(this.segments.length - 1);
-    const lastDestination = lastSegment.get('destination')?.value || '';
-    this.segments.push(this.createSegment(lastDestination, ''));
-  }
-
-  removeSegment(index: number): void {
-    if (this.segments.length > 1) {
-      this.segments.removeAt(index);
-    }
-  }
-
   normalizeAirportCode(index: number, controlName: 'origin' | 'destination'): void {
     const control = this.segments.at(index).get(controlName);
     const normalizedValue = (control?.value ?? '').toString().trim().toUpperCase();

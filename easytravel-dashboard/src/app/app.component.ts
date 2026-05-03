@@ -1,9 +1,11 @@
 import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { HttpErrorResponse } from '@angular/common/http';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { Subject, finalize, takeUntil } from 'rxjs';
+import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { Subject, TimeoutError, finalize, takeUntil } from 'rxjs';
 
 import { SearchFormComponent } from './components/search-form/search-form.component';
 import { FlightResultsComponent } from './components/flight-results/flight-results.component';
@@ -13,7 +15,7 @@ import { RecentSearchesComponent } from './components/recent-searches/recent-sea
 import { FlightService } from './services/flight.service';
 import { SearchHistoryService } from './services/search-history.service';
 
-import { Flight } from './models/flight.model';
+import { Flight, FlightSearchResults } from './models/flight.model';
 import { SearchQuery, RecentSearch } from './models/search.model';
 import { FlightFilters } from './models/filter.model';
 import { format } from 'date-fns';
@@ -27,6 +29,7 @@ import { ptBR } from 'date-fns/locale';
     MatToolbarModule,
     MatIconModule,
     MatProgressSpinnerModule,
+    MatSnackBarModule,
     SearchFormComponent,
     FlightResultsComponent,
     FilterPanelComponent,
@@ -40,7 +43,11 @@ export class AppComponent implements OnInit, OnDestroy {
   private activeSearchRequests = 0;
   private cdr: ChangeDetectorRef;
 
-  flights: Flight[] = [];
+  searchResults: FlightSearchResults = {
+    tripType: 'one-way',
+    outboundFlights: [],
+    returnFlights: [],
+  };
   recentSearches: RecentSearch[] = [];
   isLoading = false;
   sortBy = 'price';
@@ -56,13 +63,13 @@ export class AppComponent implements OnInit, OnDestroy {
   constructor(
     private flightService: FlightService,
     private searchHistoryService: SearchHistoryService,
+    private snackBar: MatSnackBar,
     cdr: ChangeDetectorRef
   ) {
     this.cdr = cdr;
   }
 
   ngOnInit(): void {
-    this.availableAirlines = this.flightService.getAvailableAirlines();
     this.searchHistoryService.searches$
       .pipe(takeUntil(this.destroy$))
       .subscribe(searches => {
@@ -100,12 +107,24 @@ export class AppComponent implements OnInit, OnDestroy {
         })
       )
       .subscribe({
-        next: (flights) => {
-          this.flights = flights;
-          this.availableAirlines = this.getAvailableAirlineOptions(flights);
+        next: (results) => {
+          this.searchResults = results;
+          const availableAirlines = this.getAvailableAirlineOptions([
+            ...results.outboundFlights,
+            ...results.returnFlights,
+          ]);
+
+          this.availableAirlines = availableAirlines;
+          this.filters = {
+            ...this.filters,
+            airlines: this.filters.airlines.filter((airline) =>
+              availableAirlines.some((available) => this.matchesSelectedAirline(available, [airline]))
+            ),
+          };
         },
         error: (error) => {
           console.error('Erro ao buscar voos:', error);
+          this.showSearchError(error);
         }
       });
   }
@@ -127,35 +146,17 @@ export class AppComponent implements OnInit, OnDestroy {
     this.searchHistoryService.removeSearch(id);
   }
 
-  get filteredFlights(): Flight[] {
-    const stages = this.getFilterDebugStages(this.flights);
-
-    return stages.afterDirectFilter
-      .slice()
-      .sort((a, b) => {
-        switch (this.sortBy) {
-          case 'price':
-            return a.price - b.price;
-          case 'duration':
-            return this.getDurationInMinutes(a.duration) - this.getDurationInMinutes(b.duration);
-          case 'departure':
-            return a.departure.localeCompare(b.departure);
-          default:
-            return 0;
-        }
-      });
+  // Aplica os filtros atuais em cada direcao sem misturar ida e volta na interface.
+  get filteredResults(): FlightSearchResults {
+    return {
+      tripType: this.searchResults.tripType,
+      outboundFlights: this.filterAndSortFlights(this.searchResults.outboundFlights),
+      returnFlights: this.filterAndSortFlights(this.searchResults.returnFlights),
+    };
   }
 
-  private getFilterDebugStages(sourceFlights: Flight[]): {
-    total: number;
-    afterPriceCount: number;
-    afterDurationCount: number;
-    afterAirlineCount: number;
-    afterDirectCount: number;
-    filters: FlightFilters;
-    sampleAfterDirect: Flight | null;
-    afterDirectFilter: Flight[];
-  } {
+  // Reaproveita a mesma regra de filtros e ordenacao para cada bloco de resultados.
+  private filterAndSortFlights(sourceFlights: Flight[]): Flight[] {
     const afterPrice = sourceFlights.filter(
       (flight) => this.filters.maxPrice == null || flight.price <= this.filters.maxPrice
     );
@@ -172,21 +173,24 @@ export class AppComponent implements OnInit, OnDestroy {
       (flight) => !this.filters.directFlightsOnly || flight.stops === 0
     );
 
-    return {
-      total: sourceFlights.length,
-      afterPriceCount: afterPrice.length,
-      afterDurationCount: afterDuration.length,
-      afterAirlineCount: afterAirline.length,
-      afterDirectCount: afterDirectFilter.length,
-      filters: { ...this.filters },
-      sampleAfterDirect: afterDirectFilter[0] ?? null,
-      afterDirectFilter,
-    };
+    return afterDirectFilter
+      .slice()
+      .sort((a, b) => {
+        switch (this.sortBy) {
+          case 'price':
+            return a.price - b.price;
+          case 'duration':
+            return this.getDurationInMinutes(a.duration) - this.getDurationInMinutes(b.duration);
+          case 'departure':
+            return a.departure.localeCompare(b.departure);
+          default:
+            return 0;
+        }
+      });
   }
 
   private getAvailableAirlineOptions(flights: Flight[]): string[] {
-    const merged = [...this.flightService.getAvailableAirlines(), ...flights.map((flight) => flight.airline)];
-    return Array.from(new Set(merged)).sort((a, b) => a.localeCompare(b));
+    return Array.from(new Set(flights.map((flight) => flight.airline))).sort((a, b) => a.localeCompare(b));
   }
 
   private matchesSelectedAirline(flightAirline: string, selectedAirlines: string[]): boolean {
@@ -215,5 +219,87 @@ export class AppComponent implements OnInit, OnDestroy {
     const minutes = minuteMatch ? Number.parseInt(minuteMatch[1], 10) : 0;
 
     return (hours * 60) + minutes;
+  }
+
+  private showSearchError(error: unknown): void {
+    const statusCode = this.getErrorStatusCode(error);
+    const statusMessage = this.getErrorMessage(error, statusCode);
+
+    this.snackBar.open(`Erro ${statusCode}: ${statusMessage}`, 'Fechar', {
+      duration: 5000,
+      horizontalPosition: 'right',
+      verticalPosition: 'bottom',
+      panelClass: ['app-error-snackbar'],
+    });
+  }
+
+  private getErrorStatusCode(error: unknown): number {
+    if (error instanceof TimeoutError) {
+      return 408;
+    }
+
+    if (error instanceof HttpErrorResponse) {
+      return error.status || 500;
+    }
+
+    return 500;
+  }
+
+  private getErrorStatusMessage(statusCode: number): string {
+    switch (statusCode) {
+      case 0:
+        return 'Sem resposta do servidor';
+      case 400:
+        return 'Requisição inválida';
+      case 401:
+        return 'Não autorizado';
+      case 403:
+        return 'Acesso negado';
+      case 404:
+        return 'Recurso não encontrado';
+      case 408:
+        return 'Tempo de resposta esgotado';
+      case 429:
+        return 'Limite de requisições excedido';
+      case 500:
+        return 'Erro interno do servidor';
+      case 502:
+        return 'Falha no provedor de voos';
+      case 503:
+        return 'Serviço indisponível';
+      case 504:
+        return 'Tempo limite do servidor';
+      default:
+        return 'Falha ao buscar voos';
+    }
+  }
+
+  private getErrorMessage(error: unknown, statusCode: number): string {
+    if (error instanceof HttpErrorResponse) {
+      const backendMessage = this.extractBackendMessage(error.error);
+
+      if (backendMessage) {
+        return backendMessage;
+      }
+    }
+
+    return this.getErrorStatusMessage(statusCode);
+  }
+
+  private extractBackendMessage(payload: unknown): string | null {
+    if (!payload) {
+      return null;
+    }
+
+    if (typeof payload === 'string') {
+      return payload.trim() || null;
+    }
+
+    if (typeof payload === 'object' && 'message' in payload) {
+      const message = payload.message;
+      return typeof message === 'string' && message.trim() ? message.trim() : null;
+    }
+
+    return null;
   }
 }
