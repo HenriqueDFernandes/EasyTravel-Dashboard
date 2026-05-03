@@ -61,3 +61,9 @@ Estilo: Seguir o que já esta sendo feito no mermaid-frontend.md
 Tom: técnico;
 Audiência: o diagrama será lido por engenheiros de software que vão avaliar a estrutura, portanod deve ser detalhado de forma didatica para entendimento do repositório;
 Resposta: diagrama atualizado para refletir o atual estado do repositório
+
+# Prompt 10 (ChatGPT)
+
+Contexto: Estou desenvolvendo um dashboard de passagens aéreas
+Objetivo: gerar um icone para a identidade visual do projeto
+Estilo: Estou usando as cores #FF9800 e #4CAF50
