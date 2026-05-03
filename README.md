@@ -282,18 +282,78 @@ Ctrl + F5 (Windows/Linux)
 Cmd + Shift + R (Mac)
 ```
 
-## 🧪 Testes (A Implementar)
+## 🧪 Testes Automatizados
+
+O projeto possui uma suíte de testes unitários e de serviço baseada em **Vitest**, cobrindo backend SSR, endpoint Express, serviço Angular e lógica de filtros do dashboard.
+
+### Como rodar
+
+Na pasta `easytravel-dashboard/`:
 
 ```bash
-# Unitários (Vitest)
+# Executa toda a suíte unitária
+npm run test:unit
+
+# Executa em modo watch durante desenvolvimento
+npm run test:unit:watch
+
+# Mantém o comando padrão do Angular/Karma disponível
 npm run test
-
-# E2E (Cypress)
-npm run e2e
-
-# Coverage
-npm run test:coverage
 ```
+
+### Estrutura dos testes
+
+```text
+easytravel-dashboard/
+├── src/
+│   ├── server.utils.spec.ts                # Funções utilitárias do backend
+│   ├── server.api.spec.ts                  # Endpoint /api/flights com fetch mockado
+│   ├── test-setup.ts                       # Bootstrap do ambiente Angular no Vitest
+│   └── app/
+│       ├── app.component.spec.ts           # Lógica de filtros e separação ida/volta
+│       └── services/
+│           └── flight.service.spec.ts      # Serviço Angular com HttpTestingController
+└── vitest.config.ts                        # Configuração do runner de testes
+```
+
+### Cobertura atual
+
+#### Backend utilitário
+- `parseFlightApiResponse`: parse seguro de payload JSON e fallback para erro de payload inválido
+- `formatDurationFromMinutes`: formatação padronizada de duração em horas e minutos
+- `normalizePrice`: normalização de valores numéricos e strings com separador decimal
+- `isValidIsoDate`: validação de datas reais no formato `YYYY-MM-DD`
+- `getDurationLabel`: cálculo de duração a partir de timestamps ISO
+- `getRealPriceFromPricingOptions`: extração de preço com fallback para `cheapest_price`
+- `createApiFlightFromLeg`: mapeamento de `leg` da FlightAPI para o contrato interno da aplicação
+- `mapFlightsFromFlightApi`: separação de voos de ida e volta no formato consumido pelo frontend
+
+#### Endpoint `/api/flights`
+- cenário de sucesso para busca `one-way`
+- validação de parâmetros obrigatórios
+- rejeição de datas inválidas
+- validação de `returnDate` em buscas `round-trip`
+- tratamento de erro HTTP da API externa
+- tratamento de erro de comunicação com o provedor externo
+- verificação do uso de moeda `BRL` nas chamadas ao provedor
+
+#### Serviço Angular `FlightService`
+- envio correto dos parâmetros para buscas `one-way`
+- envio correto dos parâmetros para buscas `round-trip`
+- retorno vazio quando a busca não possui segmento válido
+- propagação de erro HTTP vindo do backend
+
+#### Lógica de filtros do dashboard
+- filtro por preço máximo
+- filtro por duração máxima
+- filtro por companhia com fuzzy matching
+- aplicação independente dos filtros para listas de ida e volta
+
+### Observações
+
+- Os testes do backend isolam chamadas externas com mocks de `fetch`.
+- A gravação de logs crus da FlightAPI também fica isolada por mocks, sem escrever arquivos reais durante a suíte.
+- O foco atual está em testes unitários e de serviço; testes E2E ainda não fazem parte desta release.
 
 ## 📝 Licença
 

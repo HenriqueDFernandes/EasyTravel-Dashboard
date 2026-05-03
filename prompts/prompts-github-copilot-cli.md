@@ -82,3 +82,48 @@ Contexto: Dashboard de busca por voos. A opção de busca ida e volta esta mostr
 Objetivo: Refatorar o backend para devolver os 10 primeiros voos de ida e os 10 primeiros voos de volta separados. Refatorar o frontend para receber o novo formato de resposta e colocar marcador que divida voos de ida e volta quando for utilziado essa opçao. Quando for só ida, mostrar só o marcador de Ida.
 Estilo: comente as funções descrevendo o uso;
 Resposta: refatore o backend e o frontend
+
+# Prompt 13
+
+Contexto: Tenho uma aplicação Angular com SSR (Node + Express) que expõe um endpoint `/api/flights`. Esse endpoint recebe origin, destination, date e opcionalmente returnDate, consulta uma API externa de voos e retorna uma lista de voos no formato de json da linha 160 do server.ts. Também possuo funções auxiliares como `#sym:parseFlightApiResponse `, `#sym:createApiFlightFromLeg ` e `#sym:mapFlightsFromFlightApi `. No frontend Angular, há um dashboard que consome esse endpoint e permite filtrar voos por preço, duração e companhia.
+
+Objetivo: Gerar uma suíte de testes automatizados cobrindo:
+
+* funções utilitárias (cálculo de duração, estimativa de preço, mapeamento de dados)
+* endpoint `/api/flights` (cenários de sucesso, parâmetros inválidos, erro da API externa)
+* serviço Angular que consome `/api/flights` (mockando HTTP)
+* lógica de filtros (preço, duração, companhia)
+
+Estilo: testes claros, nomes descritivos, uso de mocks para chamadas HTTP externas, isolamento das dependências, foco em testes unitários e de serviço. Usar boas práticas do ecossistema Angular (Jasmine/Karma ou Jest) e Node.
+
+Resposta:
+
+1. Código completo dos testes unitários das funções utilitárias
+2. Código de teste do endpoint `/api/flights` com mocks de fetch
+3. Código de teste do serviço Angular com HttpTestingController
+4. Organização sugerida de arquivos de teste
+5. Breve explicação do que cada grupo de testes cobre
+
+# Prompt 14
+
+Contexto: Foram criados os casos de testes para o MVP de dashboard de voos.
+Objetivo: Atualize essa estrutura de testes, descrevendo como rodar e o que esta coberto no nosso README.md
+Estilo: Escrita técnica;
+Resposta: README.md editado com descrição dos testes disponíveis no projeto
+
+# Prompt 15
+
+Analise o arquivo server.ts;
+Objetivo: Sugerir refatoração com foco em DRY e SRP sem mudar comportamento externo.
+Resposta: 1- lista de mudanças propostas 2 - patch sugerido por arquivo
+
+# Prompt 16
+
+Com base no código e nos testes atuais, gere um checklist com:
+- Riscos tecnicos restante
+- Gaps de cobertura de testes
+- Melhorias prioritariapara a proxima realease
+Resposta em bullets curto
+
+# Prompt 17
+

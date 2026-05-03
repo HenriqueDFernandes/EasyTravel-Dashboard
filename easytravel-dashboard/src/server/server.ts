@@ -8,102 +8,41 @@ import 'dotenv/config';
 import express from 'express';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-
-interface FlightApiPrice {
-  price?: {
-    amount?: number | string;
-    value?: number | string;
-  };
-}
-
-interface FlightApiPricingOption extends FlightApiPrice {}
-
-interface FlightApiItinerary {
-  id?: string;
-  leg_ids?: string[];
-  pricing_options?: FlightApiPricingOption[];
-  cheapest_price?: {
-    amount?: number | string;
-    value?: number | string;
-  };
-}
-
-interface FlightApiLeg {
-  id?: string;
-  departure?: string;
-  arrival?: string;
-  duration?: number;
-  stop_count?: number;
-  marketing_carrier_ids?: number[];
-}
-
-interface FlightApiCarrier {
-  id?: number;
-  name?: string;
-}
-
-interface FlightApiError {
-  message?: string;
-}
-
-interface FlightApiResponse {
-  itineraries?: FlightApiItinerary[];
-  legs?: FlightApiLeg[];
-  carriers?: FlightApiCarrier[];
-  error?: FlightApiError | string;
-}
-
-interface ApiFlight {
-  id: string;
-  airline: string;
-  price: number;
-  duration: string;
-  departure: string;
-  arrival: string;
-  stops: number;
-  origin: string;
-  destination: string;
-}
-
-interface ApiFlightSearchResults {
-  tripType: 'one-way' | 'round-trip';
-  outboundFlights: ApiFlight[];
-  returnFlights: ApiFlight[];
-}
+import type {
+  ApiFlight,
+  ApiFlightSearchResults,
+  CheapestPrice,
+  CreateApiFlightOptions,
+  FlightApiLeg,
+  FlightApiPricingOption,
+  FlightApiResponse,
+  FlightSearchParams,
+  TripType,
+  ValidationError,
+  WriteRawFlightApiResponseEntry,
+} from './server.types';
 
 const browserDistFolder = join(import.meta.dirname, '../browser');
 const logsFolder = join(process.cwd(), 'logs');
+const DEFAULT_LIMIT = 20;
+const DEFAULT_TRIP_TYPE: TripType = 'one-way';
+const FLIGHTAPI_BASE_URL = 'https://api.flightapi.io';
+const FLIGHTAPI_ONE_WAY_PATH = 'onewaytrip';
+const FLIGHTAPI_ROUND_TRIP_PATH = 'roundtrip';
+const FLIGHTAPI_PAX = '1/0/0';
+const FLIGHTAPI_CABIN_CLASS = 'Economy';
+const FLIGHTAPI_CURRENCY = 'BRL';
 
-const app = express();
+export const app = express();
 const angularApp = new AngularNodeAppEngine();
 
 // Encaminha buscas one-way e round-trip para a FlightAPI e devolve listas separadas por direcao.
 app.get('/api/flights', async (req, res) => {
   const apiKey = process.env['FLIGHTAPI_API_KEY']?.trim();
-  const origin = req.query['origin']?.toString().trim().toUpperCase();
-  const destination = req.query['destination']?.toString().trim().toUpperCase();
-  const date = req.query['date']?.toString().trim();
-  const returnDate = req.query['returnDate']?.toString().trim();
-  const tripType = (req.query['tripType']?.toString().trim() ?? 'one-way') as 'one-way' | 'round-trip';
-  const limit = Number.parseInt(req.query['limit']?.toString().trim() ?? '20', 10);
+  const paramsOrError = parseAndValidateSearchParams(req.query);
 
-  if (!origin || !destination || !date) {
-    res.status(400).json({ message: 'Parâmetros obrigatórios: origin, destination, date.' });
-    return;
-  }
-
-  if (!isValidIsoDate(date)) {
-    res.status(400).json({ message: 'Parâmetro date inválido. Use o formato YYYY-MM-DD.' });
-    return;
-  }
-
-  if (tripType === 'round-trip' && !returnDate) {
-    res.status(400).json({ message: 'Parâmetro returnDate é obrigatório para buscas round-trip.' });
-    return;
-  }
-
-  if (returnDate && !isValidIsoDate(returnDate)) {
-    res.status(400).json({ message: 'Parâmetro returnDate inválido. Use o formato YYYY-MM-DD.' });
+  if ('status' in paramsOrError) {
+    res.status(paramsOrError.status).json({ message: paramsOrError.message });
     return;
   }
 
@@ -112,29 +51,18 @@ app.get('/api/flights', async (req, res) => {
     return;
   }
 
-  const safeLimit = Number.isFinite(limit) && limit > 0 ? limit : 20;
-
-  let upstreamUrl: URL;
-  if (tripType === 'round-trip' && returnDate) {
-    upstreamUrl = new URL(
-      `https://api.flightapi.io/roundtrip/${apiKey}/${origin}/${destination}/${date}/${returnDate}/1/0/0/Economy/BRL`
-    );
-  } else {
-    upstreamUrl = new URL(
-      `https://api.flightapi.io/onewaytrip/${apiKey}/${origin}/${destination}/${date}/1/0/0/Economy/BRL`
-    );
-  }
+  const upstreamUrl = buildFlightApiUrl(apiKey, paramsOrError);
 
   try {
     const upstreamResponse = await fetch(upstreamUrl);
     const rawPayload = await upstreamResponse.text();
 
     await writeRawFlightApiResponse({
-      tripType,
-      origin,
-      destination,
-      date,
-      returnDate,
+      tripType: paramsOrError.tripType,
+      origin: paramsOrError.origin,
+      destination: paramsOrError.destination,
+      date: paramsOrError.date,
+      returnDate: paramsOrError.returnDate,
       status: upstreamResponse.status,
       payload: rawPayload,
     });
@@ -155,28 +83,73 @@ app.get('/api/flights', async (req, res) => {
       return;
     }
 
-    const mappedResults = mapFlightsFromFlightApi(payload, origin, destination, date, returnDate, tripType);
+    const mappedResults = mapFlightsFromFlightApi(
+      payload,
+      paramsOrError.origin,
+      paramsOrError.destination,
+      paramsOrError.date,
+      paramsOrError.returnDate,
+      paramsOrError.tripType,
+    );
 
     res.json({
-      tripType,
-      outboundFlights: mappedResults.outboundFlights.slice(0, safeLimit),
-      returnFlights: mappedResults.returnFlights.slice(0, safeLimit),
+      tripType: paramsOrError.tripType,
+      outboundFlights: mappedResults.outboundFlights.slice(0, paramsOrError.limit),
+      returnFlights: mappedResults.returnFlights.slice(0, paramsOrError.limit),
     });
   } catch {
     res.status(502).json({ message: 'Erro de comunicação com o provedor de voos.' });
   }
 });
 
+function parseAndValidateSearchParams(query: Record<string, unknown>): FlightSearchParams | ValidationError {
+  const origin = query['origin']?.toString().trim().toUpperCase();
+  const destination = query['destination']?.toString().trim().toUpperCase();
+  const date = query['date']?.toString().trim();
+  const returnDate = query['returnDate']?.toString().trim();
+  const tripType = (query['tripType']?.toString().trim() ?? DEFAULT_TRIP_TYPE) as TripType;
+  const limit = Number.parseInt(query['limit']?.toString().trim() ?? String(DEFAULT_LIMIT), 10);
+
+  if (!origin || !destination || !date) {
+    return { status: 400, message: 'Parâmetros obrigatórios: origin, destination, date.' };
+  }
+
+  if (!isValidIsoDate(date)) {
+    return { status: 400, message: 'Parâmetro date inválido. Use o formato YYYY-MM-DD.' };
+  }
+
+  if (tripType === 'round-trip' && !returnDate) {
+    return { status: 400, message: 'Parâmetro returnDate é obrigatório para buscas round-trip.' };
+  }
+
+  if (returnDate && !isValidIsoDate(returnDate)) {
+    return { status: 400, message: 'Parâmetro returnDate inválido. Use o formato YYYY-MM-DD.' };
+  }
+
+  return {
+    origin,
+    destination,
+    date,
+    returnDate,
+    tripType,
+    limit: Number.isFinite(limit) && limit > 0 ? limit : DEFAULT_LIMIT,
+  };
+}
+
+function buildFlightApiUrl(apiKey: string, params: FlightSearchParams): URL {
+  if (params.tripType === 'round-trip' && params.returnDate) {
+    return new URL(
+      `${FLIGHTAPI_BASE_URL}/${FLIGHTAPI_ROUND_TRIP_PATH}/${apiKey}/${params.origin}/${params.destination}/${params.date}/${params.returnDate}/${FLIGHTAPI_PAX}/${FLIGHTAPI_CABIN_CLASS}/${FLIGHTAPI_CURRENCY}`
+    );
+  }
+
+  return new URL(
+    `${FLIGHTAPI_BASE_URL}/${FLIGHTAPI_ONE_WAY_PATH}/${apiKey}/${params.origin}/${params.destination}/${params.date}/${FLIGHTAPI_PAX}/${FLIGHTAPI_CABIN_CLASS}/${FLIGHTAPI_CURRENCY}`
+  );
+}
+
 // Salva a resposta crua da FlightAPI para depuracao sem afetar o fluxo da aplicacao.
-async function writeRawFlightApiResponse(entry: {
-  tripType: 'one-way' | 'round-trip';
-  origin: string;
-  destination: string;
-  date: string;
-  returnDate?: string;
-  status: number;
-  payload: string;
-}): Promise<void> {
+async function writeRawFlightApiResponse(entry: WriteRawFlightApiResponseEntry): Promise<void> {
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
   const returnSuffix = entry.returnDate ? `-${entry.returnDate}` : '';
   const fileName = `${timestamp}-${entry.tripType}-${entry.origin}-${entry.destination}-${entry.date}${returnSuffix}-status-${entry.status}.json`;
@@ -190,7 +163,7 @@ async function writeRawFlightApiResponse(entry: {
 }
 
 // Faz o parse seguro do payload cru retornado pela FlightAPI antes do mapeamento interno.
-function parseFlightApiResponse(rawPayload: string): FlightApiResponse {
+export function parseFlightApiResponse(rawPayload: string): FlightApiResponse {
   try {
     return JSON.parse(rawPayload) as FlightApiResponse;
   } catch {
@@ -201,13 +174,13 @@ function parseFlightApiResponse(rawPayload: string): FlightApiResponse {
 }
 
 // Converte a resposta da FlightAPI no contrato consumido pelo frontend, separando ida e volta.
-function mapFlightsFromFlightApi(
+export function mapFlightsFromFlightApi(
   response: FlightApiResponse,
   origin: string,
   destination: string,
   fallbackDate: string,
   returnFallbackDate: string | undefined,
-  tripType: 'one-way' | 'round-trip' = 'one-way',
+  tripType: TripType = 'one-way',
 ): ApiFlightSearchResults {
   const legsById = new Map((response.legs ?? []).flatMap((leg) => leg.id ? [[leg.id, leg] as const] : []));
   const carriersById = new Map((response.carriers ?? []).flatMap((carrier) => {
@@ -275,16 +248,10 @@ function mapFlightsFromFlightApi(
 }
 
 // Monta um voo da aplicacao a partir de um leg da FlightAPI, preservando o preco do itinerario.
-function createApiFlightFromLeg(
+export function createApiFlightFromLeg(
   leg: FlightApiLeg | undefined,
   carriersById: Map<number, string>,
-  options: {
-    id: string;
-    price: number;
-    origin: string;
-    destination: string;
-    fallbackDate: string;
-  },
+  options: CreateApiFlightOptions,
 ): ApiFlight | null {
   if (!leg) {
     return null;
@@ -317,9 +284,9 @@ function createApiFlightFromLeg(
 }
 
 // Extrai o preco utilizavel do itinerario a partir das opcoes de compra retornadas pela API.
-function getRealPriceFromPricingOptions(
+export function getRealPriceFromPricingOptions(
   pricingOptions: FlightApiPricingOption[],
-  cheapestPrice?: { amount?: number | string; value?: number | string },
+  cheapestPrice?: CheapestPrice,
 ): number | null {
   const candidateValues = [
     ...pricingOptions.map((option) => option.price?.amount ?? option.price?.value),
@@ -338,14 +305,11 @@ function getRealPriceFromPricingOptions(
   return null;
 }
 
-function formatDurationFromMinutes(totalMinutes: number): string {
-  const hours = Math.floor(totalMinutes / 60);
-  const minutes = totalMinutes % 60;
-
-  return `${hours}h ${minutes}m`;
+export function formatDurationFromMinutes(totalMinutes: number): string {
+  return formatMinutesAsDuration(totalMinutes);
 }
 
-function normalizePrice(value: number | string | undefined): number | null {
+export function normalizePrice(value: number | string | undefined): number | null {
   if (typeof value === 'number' && Number.isFinite(value) && value > 0) {
     return Math.round(value * 100) / 100;
   }
@@ -363,7 +327,7 @@ function normalizePrice(value: number | string | undefined): number | null {
   return Math.round(normalized * 100) / 100;
 }
 
-function isValidIsoDate(value: string): boolean {
+export function isValidIsoDate(value: string): boolean {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
     return false;
   }
@@ -383,7 +347,7 @@ function isValidIsoDate(value: string): boolean {
   );
 }
 
-function getDurationLabel(departureIso: string, arrivalIso: string): string {
+export function getDurationLabel(departureIso: string, arrivalIso: string): string {
   const departureTime = new Date(departureIso).getTime();
   const arrivalTime = new Date(arrivalIso).getTime();
 
@@ -392,6 +356,10 @@ function getDurationLabel(departureIso: string, arrivalIso: string): string {
   }
 
   const totalMinutes = Math.round((arrivalTime - departureTime) / 60000);
+  return formatMinutesAsDuration(totalMinutes);
+}
+
+function formatMinutesAsDuration(totalMinutes: number): string {
   const hours = Math.floor(totalMinutes / 60);
   const minutes = totalMinutes % 60;
 

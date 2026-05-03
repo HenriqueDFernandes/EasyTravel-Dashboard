@@ -140,9 +140,4 @@ export class FlightService {
 
     return `${year}-${month}-${day}`;
   }
-
-
-  getAvailableAirlines(): string[] {
-    return ['LATAM', 'GOL', 'Azul', 'TAP', 'American Airlines'];
-  }
 }
