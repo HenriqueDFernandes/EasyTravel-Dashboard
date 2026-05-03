@@ -8,6 +8,8 @@ import 'dotenv/config';
 import express from 'express';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import fallbackOneWay from './fallback-oneway.json' with { type: 'json' };
+import fallbackRoundTrip from './fallback-roundtrip.json' with { type: 'json' };
 import type {
   ApiFlight,
   ApiFlightSearchResults,
@@ -36,6 +38,11 @@ const FLIGHTAPI_CURRENCY = 'BRL';
 export const app = express();
 const angularApp = new AngularNodeAppEngine();
 
+// Retorna dados de fallback com flag de dados fictícios
+function getFallbackData(tripType: TripType): FlightApiResponse {
+  return tripType === 'round-trip' ? (fallbackRoundTrip as FlightApiResponse) : (fallbackOneWay as FlightApiResponse);
+}
+
 // Encaminha buscas one-way e round-trip para a FlightAPI e devolve listas separadas por direcao.
 app.get('/api/flights', async (req, res) => {
   const apiKey = process.env['FLIGHTAPI_API_KEY']?.trim();
@@ -52,8 +59,10 @@ app.get('/api/flights', async (req, res) => {
   }
 
   const upstreamUrl = buildFlightApiUrl(apiKey, paramsOrError);
+  const logUrl = upstreamUrl.toString().replace(apiKey, '***');
 
   try {
+    console.log('[FlightAPI] Calling:', logUrl);
     const upstreamResponse = await fetch(upstreamUrl);
     const rawPayload = await upstreamResponse.text();
 
@@ -68,7 +77,25 @@ app.get('/api/flights', async (req, res) => {
     });
 
     if (!upstreamResponse.ok) {
-      res.status(upstreamResponse.status).json({ message: 'Falha na consulta ao provedor de voos.' });
+      console.error(`[FlightAPI] Status ${upstreamResponse.status}:`, rawPayload);
+      console.log('[Fallback] Retornando dados fictícios devido a falha na API');
+      
+      const fallbackData = getFallbackData(paramsOrError.tripType);
+      const mappedResults = mapFlightsFromFlightApi(
+        fallbackData,
+        paramsOrError.origin,
+        paramsOrError.destination,
+        paramsOrError.date,
+        paramsOrError.returnDate,
+        paramsOrError.tripType,
+      );
+
+      res.json({
+        tripType: paramsOrError.tripType,
+        outboundFlights: mappedResults.outboundFlights.slice(0, paramsOrError.limit),
+        returnFlights: mappedResults.returnFlights.slice(0, paramsOrError.limit),
+        isMockData: true,
+      });
       return;
     }
 
@@ -96,6 +123,7 @@ app.get('/api/flights', async (req, res) => {
       tripType: paramsOrError.tripType,
       outboundFlights: mappedResults.outboundFlights.slice(0, paramsOrError.limit),
       returnFlights: mappedResults.returnFlights.slice(0, paramsOrError.limit),
+      isMockData: false,
     });
   } catch {
     res.status(502).json({ message: 'Erro de comunicação com o provedor de voos.' });

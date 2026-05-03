@@ -14,4 +14,5 @@ export interface FlightSearchResults {
   tripType: 'one-way' | 'round-trip';
   outboundFlights: Flight[];
   returnFlights: Flight[];
+  isMockData?: boolean;
 }

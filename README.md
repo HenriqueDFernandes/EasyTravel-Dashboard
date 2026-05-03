@@ -3,7 +3,7 @@
 **Repositório do MVP**: Dashboard interativo para busca de passagens aéreas desenvolvido como especialização em GenAI (IA Generativa).
 
 [![Build Status](https://img.shields.io/badge/build-passing-brightgreen)]()
-[![Version](https://img.shields.io/badge/version-0.1.0-blue)]()
+[![Version](https://img.shields.io/badge/version-1.0.0-brightgreen)]()
 [![License](https://img.shields.io/badge/license-CC%20BY%204.0-blue)]()
 
 ## 📋 Descrição
@@ -18,7 +18,7 @@ O projeto consiste em um **dashboard web responsivo** para busca de passagens a�
 - **Tecnologias Familiares**: Angular + Angular Material (foco em IA, não framework)
 - **Validação**: Testes automáticos e práticas de conventional commits
 
-## 🎯 Funcionalidades Implementadas (v0.1.0)
+## 🎯 Funcionalidades Implementadas (v1.0.0)
 
 ### ✅ Search Core
 - [x] Busca por origem, destino e data
@@ -275,43 +275,101 @@ Laboratorio_introdutorio/
 | Branco | `#FFFFFF` | Fundo, cards |
 | Cinzento | `#F5F5F5` | Bordas, textos secundários |
 
-## 📊 Commits (v0.1.0)
-
-Seguindo [Conventional Commits](https://www.conventionalcommits.org/):
-
-1. `feat(api): migrar busca de voos para a FlightAPI com chave no servidor`
-2. `feat(ui): melhorar fluxo de carregamento da busca e comportamento dos filtros`
-3. `style(ui): ajustar larguras do layout e atualizar o favicon da aplicação`
 
 ## 📈 Roadmap (Próximas Releases)
 
-### v0.2.0 - Ida e Volta Automática
-- [ ] Montagem automática de trecho retorno
-- [ ] Diferenciação clara ida/volta nos resultados
+### v1.0.0 - MVP Completo ✅
+- [x] Busca de passagens aéreas (ida/volta e múltiplos trechos)
+- [x] Filtros avançados (preço, duração, companhia, diretos)
+- [x] Histórico de buscas recentes
+- [x] Interface responsiva e intuitiva
+- [x] Testes unitários completos (27 testes)
+- [x] Express backend com SSR
+- [x] Integração com FlightAPI
 
-### v0.3.0 - Testes & Documentação
-- [x] Testes unitários e de serviço com Vitest (backend + frontend)
-- [ ] Testes E2E (Cypress)
-- [ ] Swagger/OpenAPI para backend
+### v1.1.0 - Múltiplos Trechos & Paradas
+- [ ] Suporte para até 5 segmentos em uma única busca
+- [ ] Cálculo automático de conexões e tempo de espera
+- [ ] Visualização de paradas intermediárias
+- [ ] Itinerários complexos com melhor UX
 
-### v0.4.0 - Performance & UX
-- [ ] Implementar cache de resultados
-- [ ] Dark mode
-- [ ] Multi-idioma (PT-BR, EN, ES)
+### v1.2.0 - Controle de Usuários & Preferências
+- [ ] Autenticação com email/senha
+- [ ] Perfis de usuário com preferências personalizadas
+- [ ] Salvar e gerenciar buscas favoritas
+- [ ] Histórico de buscas sincronizado entre dispositivos
+- [ ] Recomendações baseadas em histórico
 
-### v0.5.0 - Recursos Avançados
-- [ ] Comparação side-by-side de voos
-- [ ] Salvar favoritos
-- [ ] Alertas de preço
+### v1.3.0 - Alertas Automáticos & Notificações
+- [ ] Sistema de alertas de preço (notificar quando preço cai)
+- [ ] Email digest com melhores ofertas
+- [ ] Notificações push no navegador
+- [ ] Rastreamento de voos e status em tempo real
+- [ ] Alertas customizáveis por rota favorita
 
 ## 🐛 Limitações Conhecidas
 
 | Limitação | Motivo | Status |
 |-----------|--------|--------|
-| Apenas voos nacionais | Escopo MVP | ⏳ v0.2.0 |
-| 50 req/mês FlightAPI | Plano free da API | ⏳ Roadmap |
-| Sem dark mode | Tempo de dev | ⏳ v0.4.0 |
-| Sem autenticação | MVP simplificado | ⏳ Futuro |
+| Apenas voos nacionais pré-definidos | Escopo MVP v1.0 | ⏳ Futuro |
+| 30 créditos free no FlightAPI | Plano free da API — [ver pricing](https://www.flightapi.io/#pricing) | ⏳ Roadmap |
+| Sem dark mode | Prioridade menor | ⏳ Roadmap |
+| Sem autenticação | Será adicionado em v1.2.0 | ⏳ v1.2.0 |
+| Sem alertas de preço | Será adicionado em v1.3.0 | ⏳ v1.3.0 |
+
+## 🎬 Modo Demo (Fallback de Dados Fictícios)
+
+Quando a **API do FlightAPI falha** (por indisponibilidade, créditos esgotados, ou erro de conexão), a aplicação entra automaticamente em **modo demo** e exibe dados fictícios de exemplo:
+
+### Como Funciona
+
+1. **Backend detecta falha**: Quando a chamada a `https://api.flightapi.io` retorna erro (status != 200)
+2. **Ativa fallback**: Em vez de exibir erro, carrega dados de exemplo:
+   - `src/server/fallback-oneway.json` — Voos one-way fictícios (GRU → REC)
+   - `src/server/fallback-roundtrip.json` — Voos round-trip fictícios (GRU → REC → ida/volta)
+3. **Alerta visual**: Exibe mensagem laranja no topo:
+   ```
+   ⚠️ Dados fictícios: A API de voos está indisponível. Exibindo dados de exemplo.
+   ```
+4. **Flag no response**: Backend retorna `isMockData: true` junto com os dados
+
+### Casos de Ativação
+
+- ❌ **API key não configurada** (FLIGHTAPI_API_KEY faltando)
+- ❌ **Créditos esgotados** (30 créditos free do plano trial)
+- ❌ **Erro de autenticação** (status 401 ou 403)
+- ❌ **Erro da API** (status 400, 500, etc)
+- ❌ **Problema de conectividade** (timeout, DNS falha, etc)
+
+### Dados Fictícios Fornecidos
+
+**One-Way (GRU → REC, 1º de junho):**
+- 25 itinerários
+- Companhia: LATAM
+- Preços: R$ 300-324
+- Duração: 2 horas (voos diretos)
+
+**Round-Trip (GRU → REC → GRU, 1-10 de junho):**
+- 1 itinerário combinado
+- Companhia: Azul
+- Preço: R$ 1.500,50
+- Ida: 3 horas (direto)
+- Volta: 3h30 (1 parada)
+
+### Limitações do Modo Demo
+
+- Dados não refletem preços reais
+- Não há atualização em tempo real
+- Filtros funcionam normalmente (pelos dados fictícios)
+- Ideal apenas para **desenvolvimento, demonstração e testes**
+
+### Para Produção
+
+Em produção, implemente:
+- **Retry automático** com backoff exponencial
+- **Cache de resultados** anteriores
+- **Notificações** ao time de operações
+- **Métricas** de falha da API
 
 ## 💡 Troubleshooting
 
@@ -441,9 +499,14 @@ Sob a condição de: atribuição do trabalho original
 
 ### Desenvolvimento
 - **Desenvolvedor Principal**: Henrique DF
-- **Especialização**: Pós-Graduação em GenAI
-- **Instituição**: [Sua Instituição]
+- **Especialização**: Laboratório Introdutório da Pós-Graduação em Inteligência Artificial Generativa
+- **Instituição**: Universidade Federal de Goiás (UFG)
+- **Professor Orientador**: Leon Sólon da Silva
 - **Período**: 2026
+
+---
+
+**Nota**: Este projeto foi desenvolvido como parte do Laboratório Introdutório da Pós-Especialização em Inteligência Artificial Generativa da UFG, explorando o uso de IA generativa em todas as fases do ciclo de desenvolvimento de software.
 
 ## 📞 Suporte & Contato
 

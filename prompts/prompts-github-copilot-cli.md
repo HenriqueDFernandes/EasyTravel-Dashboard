@@ -146,3 +146,7 @@ Resposta em checklist objetivo
 
 # Prompt 19
 
+Contexto: Vou publicar a versão v1.0.0 no github;
+Objetivo: gerar checklist final com itens tecnicos e de documentação para release.
+Estilo: checkbox markdown
+Resposta: Lista completa

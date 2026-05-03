@@ -62,6 +62,7 @@ export interface ApiFlightSearchResults {
   tripType: TripType;
   outboundFlights: ApiFlight[];
   returnFlights: ApiFlight[];
+  isMockData?: boolean;
 }
 
 export interface FlightSearchParams {

@@ -109,6 +109,16 @@ export class AppComponent implements OnInit, OnDestroy {
       .subscribe({
         next: (results) => {
           this.searchResults = results;
+          
+          // Alerta se os dados são fictícios
+          if (results.isMockData) {
+            this.snackBar.open(
+              '⚠️ Dados fictícios: A API de voos está indisponível. Exibindo dados de exemplo.',
+              'Fechar',
+              { duration: 8000, panelClass: 'warning-snackbar' }
+            );
+          }
+          
           const availableAirlines = this.getAvailableAirlineOptions([
             ...results.outboundFlights,
             ...results.returnFlights,
