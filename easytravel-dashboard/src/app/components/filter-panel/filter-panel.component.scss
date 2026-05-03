@@ -5,7 +5,7 @@
 
 .filter-form {
   display: grid;
-  grid-template-columns: 0.9fr 1fr 1fr 1.35fr auto;
+  grid-template-columns: 0.85fr 1.2fr 1.2fr 1.3fr auto;
   gap: 0.75rem;
   align-items: start;
   margin-top: 1rem;
@@ -13,6 +13,14 @@
 
 mat-form-field {
   min-width: 0;
+}
+
+.compact-field {
+  font-size: 0.9rem;
+}
+
+.compact-field ::ng-deep .mdc-floating-label {
+  font-size: 0.8rem;
 }
 
 mat-checkbox {

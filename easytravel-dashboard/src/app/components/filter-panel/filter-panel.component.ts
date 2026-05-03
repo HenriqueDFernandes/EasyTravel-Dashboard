@@ -27,8 +27,8 @@ import { FlightFilters } from '../../models/filter.model';
 })
 export class FilterPanelComponent {
   @Input() filters: FlightFilters = {
-    maxPrice: 0,
-    maxDuration: 0,
+    maxPrice: null,
+    maxDuration: null,
     airlines: [],
     directFlightsOnly: false
   };

@@ -1,6 +1,6 @@
 export interface FlightFilters {
-  maxPrice: number;
-  maxDuration: number;
+  maxPrice: number | null;
+  maxDuration: number | null;
   airlines: string[];
   directFlightsOnly: boolean;
 }

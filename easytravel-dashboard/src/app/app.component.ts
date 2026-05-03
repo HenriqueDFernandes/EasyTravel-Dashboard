@@ -1,9 +1,9 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { Subject, takeUntil } from 'rxjs';
+import { Subject, finalize, takeUntil } from 'rxjs';
 
 import { SearchFormComponent } from './components/search-form/search-form.component';
 import { FlightResultsComponent } from './components/flight-results/flight-results.component';
@@ -37,6 +37,8 @@ import { ptBR } from 'date-fns/locale';
 })
 export class AppComponent implements OnInit, OnDestroy {
   private destroy$ = new Subject<void>();
+  private activeSearchRequests = 0;
+  private cdr: ChangeDetectorRef;
 
   flights: Flight[] = [];
   recentSearches: RecentSearch[] = [];
@@ -45,20 +47,22 @@ export class AppComponent implements OnInit, OnDestroy {
   availableAirlines: string[] = [];
 
   filters: FlightFilters = {
-    maxPrice: 5000,
-    maxDuration: 24,
+    maxPrice: null,
+    maxDuration: null,
     airlines: [],
     directFlightsOnly: false
   };
 
   constructor(
     private flightService: FlightService,
-    private searchHistoryService: SearchHistoryService
+    private searchHistoryService: SearchHistoryService,
+    cdr: ChangeDetectorRef
   ) {
-    this.availableAirlines = this.flightService.getAvailableAirlines();
+    this.cdr = cdr;
   }
 
   ngOnInit(): void {
+    this.availableAirlines = this.flightService.getAvailableAirlines();
     this.searchHistoryService.searches$
       .pipe(takeUntil(this.destroy$))
       .subscribe(searches => {
@@ -72,7 +76,8 @@ export class AppComponent implements OnInit, OnDestroy {
   }
 
   onSearch(query: SearchQuery): void {
-    this.isLoading = true;
+    this.activeSearchRequests += 1;
+    this.isLoading = this.activeSearchRequests > 0;
 
     // Adicionar ao histórico
     const firstSegment = query.segments[0];
@@ -86,15 +91,21 @@ export class AppComponent implements OnInit, OnDestroy {
 
     // Buscar voos
     this.flightService.searchFlights(query)
-      .pipe(takeUntil(this.destroy$))
+      .pipe(
+        takeUntil(this.destroy$),
+        finalize(() => {
+          this.activeSearchRequests = Math.max(0, this.activeSearchRequests - 1);
+          this.isLoading = this.activeSearchRequests > 0;
+          this.cdr.markForCheck();
+        })
+      )
       .subscribe({
         next: (flights) => {
           this.flights = flights;
-          this.isLoading = false;
+          this.availableAirlines = this.getAvailableAirlineOptions(flights);
         },
         error: (error) => {
           console.error('Erro ao buscar voos:', error);
-          this.isLoading = false;
         }
       });
   }
@@ -117,28 +128,92 @@ export class AppComponent implements OnInit, OnDestroy {
   }
 
   get filteredFlights(): Flight[] {
-    return this.flights
-      .filter(f => f.price <= this.filters.maxPrice)
-      .filter(f => {
-        const durationHours = parseFloat(f.duration.split('h')[0]);
-        return durationHours <= this.filters.maxDuration;
-      })
-      .filter(f => 
-        this.filters.airlines.length === 0 || 
-        this.filters.airlines.includes(f.airline)
-      )
-      .filter(f => !this.filters.directFlightsOnly || f.stops === 0)
+    const stages = this.getFilterDebugStages(this.flights);
+
+    return stages.afterDirectFilter
+      .slice()
       .sort((a, b) => {
         switch (this.sortBy) {
           case 'price':
             return a.price - b.price;
           case 'duration':
-            return parseFloat(a.duration) - parseFloat(b.duration);
+            return this.getDurationInMinutes(a.duration) - this.getDurationInMinutes(b.duration);
           case 'departure':
             return a.departure.localeCompare(b.departure);
           default:
             return 0;
         }
       });
+  }
+
+  private getFilterDebugStages(sourceFlights: Flight[]): {
+    total: number;
+    afterPriceCount: number;
+    afterDurationCount: number;
+    afterAirlineCount: number;
+    afterDirectCount: number;
+    filters: FlightFilters;
+    sampleAfterDirect: Flight | null;
+    afterDirectFilter: Flight[];
+  } {
+    const afterPrice = sourceFlights.filter(
+      (flight) => this.filters.maxPrice == null || flight.price <= this.filters.maxPrice
+    );
+
+    const afterDuration = afterPrice.filter(
+      (flight) => this.filters.maxDuration == null || this.getDurationInMinutes(flight.duration) <= this.filters.maxDuration
+    );
+
+    const afterAirline = afterDuration.filter(
+      (flight) => this.filters.airlines.length === 0 || this.matchesSelectedAirline(flight.airline, this.filters.airlines)
+    );
+
+    const afterDirectFilter = afterAirline.filter(
+      (flight) => !this.filters.directFlightsOnly || flight.stops === 0
+    );
+
+    return {
+      total: sourceFlights.length,
+      afterPriceCount: afterPrice.length,
+      afterDurationCount: afterDuration.length,
+      afterAirlineCount: afterAirline.length,
+      afterDirectCount: afterDirectFilter.length,
+      filters: { ...this.filters },
+      sampleAfterDirect: afterDirectFilter[0] ?? null,
+      afterDirectFilter,
+    };
+  }
+
+  private getAvailableAirlineOptions(flights: Flight[]): string[] {
+    const merged = [...this.flightService.getAvailableAirlines(), ...flights.map((flight) => flight.airline)];
+    return Array.from(new Set(merged)).sort((a, b) => a.localeCompare(b));
+  }
+
+  private matchesSelectedAirline(flightAirline: string, selectedAirlines: string[]): boolean {
+    const normalizedFlight = this.normalizeAirline(flightAirline);
+
+    return selectedAirlines.some((selected) => {
+      const normalizedSelected = this.normalizeAirline(selected);
+      return normalizedFlight.includes(normalizedSelected) || normalizedSelected.includes(normalizedFlight);
+    });
+  }
+
+  private normalizeAirline(value: string): string {
+    return value
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .trim();
+  }
+
+  private getDurationInMinutes(duration: string): number {
+    const normalized = duration.toLowerCase().replace(/min/g, 'm').trim();
+    const hourMatch = normalized.match(/(\d+)\s*h/);
+    const minuteMatch = normalized.match(/(\d+)\s*m/);
+
+    const hours = hourMatch ? Number.parseInt(hourMatch[1], 10) : 0;
+    const minutes = minuteMatch ? Number.parseInt(minuteMatch[1], 10) : 0;
+
+    return (hours * 60) + minutes;
   }
 }

@@ -13,14 +13,14 @@
         </mat-select>
       </mat-form-field>
 
-      <mat-form-field appearance="outline">
+      <mat-form-field appearance="outline" class="compact-field">
         <mat-label>Preço Máximo</mat-label>
-        <input matInput type="number" [(ngModel)]="filters.maxPrice" (ngModelChange)="filtersChange.emit(filters)" name="maxPrice">
+        <input matInput type="number" placeholder="Sem limite" [(ngModel)]="filters.maxPrice" (ngModelChange)="filtersChange.emit(filters)" name="maxPrice">
       </mat-form-field>
 
-      <mat-form-field appearance="outline">
+      <mat-form-field appearance="outline" class="compact-field">
         <mat-label>Duração Máxima (min)</mat-label>
-        <input matInput type="number" [(ngModel)]="filters.maxDuration" (ngModelChange)="filtersChange.emit(filters)" name="maxDuration">
+        <input matInput type="number" placeholder="Sem limite" [(ngModel)]="filters.maxDuration" (ngModelChange)="filtersChange.emit(filters)" name="maxDuration">
       </mat-form-field>
 
       <mat-form-field appearance="outline">
