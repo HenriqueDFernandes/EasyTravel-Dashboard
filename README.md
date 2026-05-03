@@ -66,10 +66,12 @@ O projeto consiste em um **dashboard web responsivo** para busca de passagens a�
 
 ### Pré-requisitos
 ```bash
-node --version   # >= 18.x
+node --version   # >= 20.11.x
 npm --version    # >= 10.x
 git --version    # >= 2.x
 ```
+
+Versão de Node recomendada no projeto: arquivo `.nvmrc` em `easytravel-dashboard/`.
 
 ### 1️⃣ Clonar Repositório
 ```bash
@@ -83,9 +85,10 @@ npm install
 ```
 
 ### 3️⃣ Configurar API Key
-Crie um arquivo `.env` na raiz do projeto:
+Use o arquivo de exemplo versionado:
 ```bash
-# .env (não será versionado)
+cp .env.example .env
+# depois edite o .env e preencha:
 FLIGHTAPI_API_KEY=sua_chave_da_api
 ```
 
@@ -97,7 +100,19 @@ FLIGHTAPI_API_KEY=sua_chave_da_api
 
 ⚠️ **Segurança**: Nunca commite `.env`. Está no `.gitignore`.
 
-### 4️⃣ Rodando o Projeto
+### 4️⃣ Validação Pós-Setup (Health Check)
+
+Com a aplicação em execução (`npm start`), valide o endpoint backend:
+
+```bash
+curl "http://localhost:4200/api/flights?origin=GRU&destination=REC&date=2026-06-01"
+```
+
+Comportamento esperado:
+- com `FLIGHTAPI_API_KEY` válida: retorno `200` com lista de voos
+- sem chave válida: retorno `503` com mensagem de configuração ausente
+
+### 5️⃣ Rodando o Projeto
 
 **Desenvolvimento:**
 ```bash
@@ -110,6 +125,47 @@ npm start
 npm run build
 # Saída: dist/
 ```
+
+## 🔁 Reprodutibilidade em Máquina Limpa
+
+O repositório está preparado para execução em máquina limpa com:
+
+- versão mínima de runtime definida em `easytravel-dashboard/package.json` (`engines`)
+- versão recomendada de Node em `easytravel-dashboard/.nvmrc`
+- arquivo `easytravel-dashboard/.env.example` para bootstrap seguro do ambiente
+- fluxo de validação inicial via health check do endpoint `/api/flights`
+- scripts de build e testes unitários documentados e validados
+
+## 🧭 Onboarding Técnico
+
+Pontos-chave para entrada técnica no projeto:
+
+- **Arquitetura backend SSR**: `src/server/server.ts` concentra roteamento Express SSR, validação de query e integração com FlightAPI
+- **Contratos e tipos**: `src/server/server.types.ts` centraliza os tipos de request/response e mapeamento de domínio
+- **Fluxo frontend**: `AppComponent` orquestra busca, filtros e ordenação; `FlightService` encapsula acesso ao endpoint `/api/flights`
+- **Estratégia de testes**: suíte Vitest cobre utilitários de backend, endpoint, serviço Angular e lógica de filtros (27 testes)
+- **Artefatos de apoio**: `docs/escopo.md`, `docs/backlog.md` e `docs/mermaid-frontend.md` para contexto de produto e arquitetura
+
+## 🤖 Uso de IA no Projeto
+
+Este MVP foi desenvolvido com apoio de IA generativa em etapas de design, implementação, refatoração, testes e documentação.
+
+### Ferramentas e Modelos Utilizados
+
+| Ferramenta | Contexto de uso | Modelos / foco |
+|-----------|------------------|----------------|
+| **GitHub Copilot CLI** | Geração de código, refatorações incrementais, criação/ajuste de testes, revisão de gaps | **GPT-4.1** e **GPT-5.3-Codex** |
+| **GitHub Copilot Chat (lateral no VS Code)** | Iteração rápida de arquitetura, debug, ajustes de README e validações de implementação | **GPT-4.1** e **GPT-5.3-Codex** |
+| **ChatGPT** | Dúvidas conceituais, alternativas de abordagem e validação de decisões técnicas | Suporte conceitual |
+| **FigmaMake** | Ideação visual e direcionamento de layout para interface Angular Material | Design de interface |
+
+### Boas Práticas de Uso de IA Adotadas
+
+- Prompts orientados por objetivo, contexto e resultado esperado
+- Revisão humana de todo código gerado antes de merge
+- Validação por testes automatizados após alterações sugeridas por IA
+- Uso de commits semânticos para rastrear mudanças induzidas por IA
+- Remoção de dados sensíveis do contexto (API key apenas em `.env`)
 
 ## 📖 Exemplos de Uso
 
@@ -146,7 +202,9 @@ Laboratorio_introdutorio/
 │   │   │   │   └── search-history.service.ts
 │   │   │   ├── models/
 │   │   │   └── data/
-│   │   ├── server.ts              # Express SSR + /api/flights
+│   │   ├── server/
+│   │   │   ├── server.ts          # Express SSR + /api/flights
+│   │   │   └── server.types.ts    # Tipos e contratos do backend SSR
 │   │   └── main.ts
 │   ├── public/
 │   │   └── easytravel.ico
@@ -232,7 +290,7 @@ Seguindo [Conventional Commits](https://www.conventionalcommits.org/):
 - [ ] Diferenciação clara ida/volta nos resultados
 
 ### v0.3.0 - Testes & Documentação
-- [ ] Testes unitários (FlightService, FilterPipe)
+- [x] Testes unitários e de serviço com Vitest (backend + frontend)
 - [ ] Testes E2E (Cypress)
 - [ ] Swagger/OpenAPI para backend
 
@@ -253,7 +311,6 @@ Seguindo [Conventional Commits](https://www.conventionalcommits.org/):
 | Apenas voos nacionais | Escopo MVP | ⏳ v0.2.0 |
 | 50 req/mês FlightAPI | Plano free da API | ⏳ Roadmap |
 | Sem dark mode | Tempo de dev | ⏳ v0.4.0 |
-| Ida e volta mescladas | Lógica atual | ⏳ v0.2.0 |
 | Sem autenticação | MVP simplificado | ⏳ Futuro |
 
 ## 💡 Troubleshooting
@@ -306,8 +363,9 @@ npm run test
 ```text
 easytravel-dashboard/
 ├── src/
-│   ├── server.utils.spec.ts                # Funções utilitárias do backend
-│   ├── server.api.spec.ts                  # Endpoint /api/flights com fetch mockado
+│   ├── server/
+│   │   ├── server.utils.spec.ts            # Funções utilitárias do backend
+│   │   └── server.api.spec.ts              # Endpoint /api/flights com fetch mockado
 │   ├── test-setup.ts                       # Bootstrap do ambiente Angular no Vitest
 │   └── app/
 │       ├── app.component.spec.ts           # Lógica de filtros e separação ida/volta
@@ -330,9 +388,13 @@ easytravel-dashboard/
 
 #### Endpoint `/api/flights`
 - cenário de sucesso para busca `one-way`
+- cenário de sucesso completo para busca `round-trip` (ida e volta separadas)
 - validação de parâmetros obrigatórios
 - rejeição de datas inválidas
 - validação de `returnDate` em buscas `round-trip`
+- validação de ausência de `FLIGHTAPI_API_KEY` (status `503`)
+- fallback de `limit` inválido/zero/negativo para o valor padrão
+- resiliência quando a gravação de log cru falha (sem quebrar resposta HTTP)
 - tratamento de erro HTTP da API externa
 - tratamento de erro de comunicação com o provedor externo
 - verificação do uso de moeda `BRL` nas chamadas ao provedor
@@ -348,12 +410,14 @@ easytravel-dashboard/
 - filtro por duração máxima
 - filtro por companhia com fuzzy matching
 - aplicação independente dos filtros para listas de ida e volta
+- combinação de filtros + ordenação por horário de partida (casos limite)
 
 ### Observações
 
 - Os testes do backend isolam chamadas externas com mocks de `fetch`.
 - A gravação de logs crus da FlightAPI também fica isolada por mocks, sem escrever arquivos reais durante a suíte.
 - O foco atual está em testes unitários e de serviço; testes E2E ainda não fazem parte desta release.
+- Suíte atual validada com `27` testes passando (`npm run test:unit`).
 
 ## 📝 Licença
 
@@ -383,9 +447,7 @@ Sob a condição de: atribuição do trabalho original
 
 ## 📞 Suporte & Contato
 
-- 📧 Email: seu-email@dominio.com
-- 🐙 GitHub Issues: [Abrir issue](../../issues)
-- 💬 Discussões: [Participar](../../discussions)
+- 📧 Email: fernandesdhenrique@gmail.com
 
 ---
 

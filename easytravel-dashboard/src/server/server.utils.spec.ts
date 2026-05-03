@@ -30,7 +30,7 @@ import {
   mapFlightsFromFlightApi,
   normalizePrice,
   parseFlightApiResponse,
-} from './server/server';
+} from './server';
 
 describe('server utilities', () => {
   it('parseFlightApiResponse should parse valid JSON payloads', () => {

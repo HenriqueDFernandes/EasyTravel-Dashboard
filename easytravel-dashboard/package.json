@@ -12,6 +12,10 @@
     "serve:ssr:easytravel-dashboard": "node dist/easytravel-dashboard/server/server.mjs"
   },
   "private": true,
+  "engines": {
+    "node": ">=20.11.0",
+    "npm": ">=10.0.0"
+  },
   "packageManager": "npm@11.5.2",
   "dependencies": {
     "@angular/animations": "^21.2.11",

@@ -127,3 +127,22 @@ Resposta em bullets curto
 
 # Prompt 17
 
+Contexto: Em uma analise de cobertura de testes foram identificados alguns Gaps:
+ Falta teste de sucesso completo para round-trip no endpoint.
+ Falta teste para ausência de chave de API (503).
+ Falta teste para limite inválido/zero/negativo e fallback de limit.
+ Falta teste para falha na gravação de log (garantir que não quebra a resposta).
+ Falta teste de ordenação combinada com filtros no frontend (casos limite).
+Objetivo: Incremente nossa camada de testes para subrir as demandas citadas, ainda não cobertas
+Resultado: Atualização dos casos de teste para aumento da cobertura.
+
+# Prompt 18
+
+Analise meu README e responda:
+1 - O que falta para ser reproduzivel em máquina limpa?
+2 - Quais seções estão fracas para onboarding tecnico?
+3 - Adicione umas seções sobre uso de IA destancando o uso de Github Copilot CLI assim como o chat lateral do vscode, com os modelo gpt-4.1 e 5.3-COdex, além de ChatGPT para dúvidas conceituais e FigmaMake para deseign da interface
+Resposta em checklist objetivo
+
+# Prompt 19
+
