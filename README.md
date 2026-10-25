@@ -130,6 +130,10 @@ npm start
 # Acesse: http://localhost:4200
 ```
 
+**Documentação da API (Swagger UI):**
+
+Com o servidor em execução, acesse `http://localhost:4200/api-docs/`. A especificação OpenAPI em JSON está disponível em `http://localhost:4200/api/openapi.json`.
+
 **Build Produção:**
 ```bash
 npm run build

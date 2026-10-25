@@ -7,9 +7,11 @@ import {
 import 'dotenv/config';
 import express from 'express';
 import { mkdir, writeFile } from 'node:fs/promises';
-import { join } from 'node:path';
+import { createRequire } from 'node:module';
+import { dirname, join } from 'node:path';
 import fallbackOneWay from './fallback-oneway.json' with { type: 'json' };
 import fallbackRoundTrip from './fallback-roundtrip.json' with { type: 'json' };
+import { openApiDocument } from './openapi';
 import type {
   ApiFlight,
   ApiFlightSearchResults,
@@ -26,6 +28,7 @@ import type {
 
 const browserDistFolder = join(import.meta.dirname, '../browser');
 const logsFolder = join(process.cwd(), 'logs');
+const swaggerUiDistFolder = dirname(createRequire(import.meta.url).resolve('swagger-ui-dist'));
 const DEFAULT_LIMIT = 20;
 const DEFAULT_TRIP_TYPE: TripType = 'one-way';
 const FLIGHTAPI_BASE_URL = 'https://api.flightapi.io';
@@ -37,6 +40,33 @@ const FLIGHTAPI_CURRENCY = 'BRL';
 
 export const app = express();
 const angularApp = new AngularNodeAppEngine();
+
+app.get('/api/openapi.json', (_req, res) => {
+  res.json(openApiDocument);
+});
+
+app.use('/api-docs/assets', express.static(swaggerUiDistFolder, { index: false }));
+app.get('/api-docs', (_req, res) => {
+  res.type('html').send(`<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>EasyTravel API - Swagger UI</title>
+    <link rel="stylesheet" href="/api-docs/assets/swagger-ui.css">
+  </head>
+  <body>
+    <div id="swagger-ui"></div>
+    <script src="/api-docs/assets/swagger-ui-bundle.js"></script>
+    <script>
+      window.onload = () => SwaggerUIBundle({
+        url: '/api/openapi.json',
+        dom_id: '#swagger-ui',
+      });
+    </script>
+  </body>
+</html>`);
+});
 
 // Retorna dados de fallback com flag de dados fictícios
 function getFallbackData(tripType: TripType): FlightApiResponse {

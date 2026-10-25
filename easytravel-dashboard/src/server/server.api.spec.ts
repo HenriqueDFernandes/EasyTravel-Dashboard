@@ -50,6 +50,29 @@ describe('/api/flights endpoint', () => {
     vi.stubEnv('FLIGHTAPI_API_KEY', 'test-key');
   });
 
+  it('should serve the OpenAPI document', async () => {
+    const response = await request(app).get('/api/openapi.json');
+
+    expect(response.status).toBe(200);
+    expect(response.body.openapi).toBe('3.0.3');
+    expect(response.body.paths['/api/flights'].get.parameters).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ name: 'origin', required: true }),
+        expect.objectContaining({ name: 'destination', required: true }),
+        expect.objectContaining({ name: 'date', required: true }),
+      ]),
+    );
+  });
+
+  it('should serve the Swagger UI', async () => {
+    const response = await request(app).get('/api-docs/');
+    const stylesheetResponse = await request(app).get('/api-docs/assets/swagger-ui.css');
+
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('swagger-ui');
+    expect(stylesheetResponse.status).toBe(200);
+  });
+
   it('should return grouped one-way flights on success', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
       ok: true,
