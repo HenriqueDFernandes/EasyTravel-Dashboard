@@ -91,18 +91,25 @@ describe('/api/flights endpoint', () => {
     expect(response.status).toBe(200);
     expect(response.body).toMatchObject({
       tripType: 'one-way',
+      isMockData: false,
       outboundFlights: [
         {
+          id: 'iti-1-outbound',
           airline: 'LATAM',
           origin: 'GRU',
           destination: 'REC',
           price: 799.9,
+          departure: '2026-06-01T08:00:00',
+          arrival: '2026-06-01T11:00:00',
+          duration: '3h 0m',
+          stops: 0,
         },
       ],
       returnFlights: [],
     });
-    expect(String((vi.mocked(fetch).mock.calls[0] ?? [])[0])).toContain('/onewaytrip/');
-    expect(String((vi.mocked(fetch).mock.calls[0] ?? [])[0])).toContain('/BRL');
+    expect(String((vi.mocked(fetch).mock.calls[0] ?? [])[0])).toBe(
+      'https://api.flightapi.io/onewaytrip/test-key/GRU/REC/2026-06-01/1/0/0/Economy/BRL',
+    );
   });
 
   it('should return 400 for invalid date parameter', async () => {
@@ -114,6 +121,20 @@ describe('/api/flights endpoint', () => {
     expect(response.body.message).toContain('date inválido');
   });
 
+  it.each([
+    ['origin', { destination: 'REC', date: '2026-06-01' }],
+    ['destination', { origin: 'GRU', date: '2026-06-01' }],
+    ['date', { origin: 'GRU', destination: 'REC' }],
+  ])('should return 400 when required parameter %s is missing', async (_parameter, query) => {
+    const response = await request(app)
+      .get('/api/flights')
+      .query(query);
+
+    expect(response.status).toBe(400);
+    expect(response.body.message).toBe('Parâmetros obrigatórios: origin, destination, date.');
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
   it('should return 400 for round-trip without returnDate', async () => {
     const response = await request(app)
       .get('/api/flights')
@@ -121,6 +142,43 @@ describe('/api/flights endpoint', () => {
 
     expect(response.status).toBe(400);
     expect(response.body.message).toContain('returnDate é obrigatório');
+  });
+
+  it('should return 400 for invalid round-trip returnDate', async () => {
+    const response = await request(app)
+      .get('/api/flights')
+      .query({
+        origin: 'GRU',
+        destination: 'REC',
+        date: '2026-06-01',
+        returnDate: '2026-02-30',
+        tripType: 'round-trip',
+      });
+
+    expect(response.status).toBe(400);
+    expect(response.body.message).toBe('Parâmetro returnDate inválido. Use o formato YYYY-MM-DD.');
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it('should return 400 for an unsupported tripType', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      text: () => Promise.resolve(JSON.stringify({ itineraries: [], legs: [], carriers: [] })),
+    }));
+
+    const response = await request(app)
+      .get('/api/flights')
+      .query({
+        origin: 'GRU',
+        destination: 'REC',
+        date: '2026-06-01',
+        tripType: 'multi-city',
+      });
+
+    expect(response.status).toBe(400);
+    expect(response.body.message).toBe('Parâmetro tripType inválido. Use one-way ou round-trip.');
+    expect(fetch).not.toHaveBeenCalled();
   });
 
   it('should return grouped outbound and return flights for round-trip success', async () => {
@@ -163,7 +221,9 @@ describe('/api/flights endpoint', () => {
       destination: 'GRU',
       stops: 1,
     });
-    expect(String((vi.mocked(fetch).mock.calls[0] ?? [])[0])).toContain('/roundtrip/');
+    expect(String((vi.mocked(fetch).mock.calls[0] ?? [])[0])).toBe(
+      'https://api.flightapi.io/roundtrip/test-key/GRU/REC/2026-06-01/2026-06-10/1/0/0/Economy/BRL',
+    );
   });
 
   it('should return 503 when FLIGHTAPI_API_KEY is missing', async () => {
@@ -215,7 +275,7 @@ describe('/api/flights endpoint', () => {
     expect(response.body.outboundFlights).toHaveLength(1);
   });
 
-  it('should propagate provider status when the upstream request fails', async () => {
+  it('should return fallback data when the upstream request fails', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
       ok: false,
       status: 401,
@@ -226,11 +286,145 @@ describe('/api/flights endpoint', () => {
       .get('/api/flights')
       .query({ origin: 'GRU', destination: 'REC', date: '2026-06-01' });
 
-    expect(response.status).toBe(401);
-    expect(response.body.message).toBe('Falha na consulta ao provedor de voos.');
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({
+      tripType: 'one-way',
+      isMockData: true,
+    });
+    expect(response.body.outboundFlights.length).toBeGreaterThan(0);
+    expect(response.body.returnFlights).toEqual([]);
   });
 
-  it('should return 502 when fetch throws communication error', async () => {
+  it('should return 502 when the upstream response is not valid JSON', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      text: () => Promise.resolve('<html>not json</html>'),
+    }));
+
+    const response = await request(app)
+      .get('/api/flights')
+      .query({ origin: 'GRU', destination: 'REC', date: '2026-06-01' });
+
+    expect(response.status).toBe(502);
+    expect(response.body.message).toBe('Resposta não está em JSON válido.');
+  });
+
+  it('should return 502 when reading the upstream response body fails', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      text: () => Promise.reject(new Error('connection interrupted')),
+    }));
+
+    const response = await request(app)
+      .get('/api/flights')
+      .query({ origin: 'GRU', destination: 'REC', date: '2026-06-01' });
+
+    expect(response.status).toBe(502);
+    expect(response.body.message).toBe('Erro de comunicação com o provedor de voos.');
+  });
+
+  it('should return empty flight lists for an empty JSON object', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      text: () => Promise.resolve('{}'),
+    }));
+
+    const response = await request(app)
+      .get('/api/flights')
+      .query({ origin: 'GRU', destination: 'REC', date: '2026-06-01' });
+
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({
+      tripType: 'one-way',
+      outboundFlights: [],
+      returnFlights: [],
+      isMockData: false,
+    });
+  });
+
+  it('should return 502 when the upstream payload has an invalid structure', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      text: () => Promise.resolve(JSON.stringify({ itineraries: 'unexpected' })),
+    }));
+
+    const response = await request(app)
+      .get('/api/flights')
+      .query({ origin: 'GRU', destination: 'REC', date: '2026-06-01' });
+
+    expect(response.status).toBe(502);
+    expect(response.body.message).toBe('Erro de comunicação com o provedor de voos.');
+  });
+
+  it('should return 502 when the provider reports an error in a successful HTTP response', async () => {
+    vi.stubGlobal('fetch', vi.fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        text: () => Promise.resolve(JSON.stringify({ error: 'No flights found' })),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        text: () => Promise.resolve(JSON.stringify({ error: { message: 'Provider unavailable' } })),
+      }));
+
+    const stringErrorResponse = await request(app)
+      .get('/api/flights')
+      .query({ origin: 'GRU', destination: 'REC', date: '2026-06-01' });
+    const objectErrorResponse = await request(app)
+      .get('/api/flights')
+      .query({ origin: 'GRU', destination: 'REC', date: '2026-06-01' });
+
+    expect(stringErrorResponse.status).toBe(502);
+    expect(stringErrorResponse.body.message).toBe('No flights found');
+    expect(objectErrorResponse.status).toBe(502);
+    expect(objectErrorResponse.body.message).toBe('Provider unavailable');
+  });
+
+  it('should map cheapest prices and omit itineraries without a usable price or leg', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      text: () => Promise.resolve(JSON.stringify({
+        itineraries: [
+          { id: 'cheapest', leg_ids: ['leg-1'], cheapest_price: { value: '850.75' } },
+          { id: 'no-price', leg_ids: ['leg-2'], pricing_options: [] },
+          { id: 'no-leg', leg_ids: ['missing-leg'], pricing_options: [{ price: { amount: 500 } }] },
+        ],
+        legs: [
+          { id: 'leg-1', departure: '2026-06-01T08:00:00', arrival: '2026-06-01T10:30:00', duration: 150, stop_count: 1, marketing_carrier_ids: [99] },
+          { id: 'leg-2', departure: '2026-06-01T12:00:00', arrival: '2026-06-01T14:00:00', duration: 120, stop_count: 0, marketing_carrier_ids: [99] },
+        ],
+        carriers: [],
+      })),
+    }));
+
+    const response = await request(app)
+      .get('/api/flights')
+      .query({ origin: 'GRU', destination: 'REC', date: '2026-06-01' });
+
+    expect(response.status).toBe(200);
+    expect(response.body.outboundFlights).toEqual([
+      {
+        id: 'cheapest-outbound',
+        airline: 'Companhia não informada',
+        price: 850.75,
+        duration: '2h 30m',
+        departure: '2026-06-01T08:00:00',
+        arrival: '2026-06-01T10:30:00',
+        stops: 1,
+        origin: 'GRU',
+        destination: 'REC',
+      },
+    ]);
+  });
+
+  it('should return 502 when fetch throws a communication error', async () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('network down')));
 
     const response = await request(app)
