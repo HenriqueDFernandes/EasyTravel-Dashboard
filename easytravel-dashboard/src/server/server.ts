@@ -165,11 +165,15 @@ function parseAndValidateSearchParams(query: Record<string, unknown>): FlightSea
   const destination = query['destination']?.toString().trim().toUpperCase();
   const date = query['date']?.toString().trim();
   const returnDate = query['returnDate']?.toString().trim();
-  const tripType = (query['tripType']?.toString().trim() ?? DEFAULT_TRIP_TYPE) as TripType;
+  const tripType = query['tripType']?.toString().trim() ?? DEFAULT_TRIP_TYPE;
   const limit = Number.parseInt(query['limit']?.toString().trim() ?? String(DEFAULT_LIMIT), 10);
 
   if (!origin || !destination || !date) {
     return { status: 400, message: 'Parâmetros obrigatórios: origin, destination, date.' };
+  }
+
+  if (tripType !== 'one-way' && tripType !== 'round-trip') {
+    return { status: 400, message: 'Parâmetro tripType inválido. Use one-way ou round-trip.' };
   }
 
   if (!isValidIsoDate(date)) {
